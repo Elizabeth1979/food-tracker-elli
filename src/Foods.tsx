@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Ctx } from './App';
-import { MEALS, VITAMINS, addEntries, client, fmtDate, json, kcalOff, labelPhotoUrl, mealItems, mealNow, readLabel, sameFood, saveLabelPhoto, searchFoods, sum, today, type Entry, type Extra, type Food, type Item, type Label, type SavedMeal, type Unit } from './lib';
+import { MEALS, VITAMINS, head, addEntries, client, fmtDate, json, kcalOff, labelPhotoUrl, mealItems, mealNow, readLabel, sameFood, saveLabelPhoto, searchFoods, sum, today, type Entry, type Extra, type Food, type Item, type Label, type SavedMeal, type Unit } from './lib';
 import { Group, FoodSummary, MINE_HINT, MicroLine, Modal, PhotoPick, confirmIt, UNIT_HINT, UnitInputs, draftOf, unitOf, type UnitDraft } from './ui';
 import { MealEditor } from './MealEditor';
 import { AddDialog } from './AddDialog';
@@ -163,7 +163,7 @@ export default function Foods({ ctx, date }: { ctx: Ctx; date: string }) {
     const items = mealItems(ctx.foods, m);
     return (
       <ItemRow key={m.id} name={m.name} onAdd={() => addMeal(m, items)}>
-        <small className="muted">{items.map((i) => i.name.split(',')[0]).join(' · ')} · <b>{sum(items).kcal} קק״ל</b></small>
+        <small className="muted">{items.map((i) => head(i.name)).join(' · ')} · <b>{sum(items).kcal} קק״ל</b></small>
         <div className="grid2">
           <button className="btn small" aria-label={`עריכה: ${m.name}`} onClick={() => setMealEdit(m)}><Icon name="pencil" />עריכה</button>
           <button className="btn small" aria-label={`מחיקה: ${m.name}`} onClick={() => delMeal(m.id)}><Icon name="trash" />מחיקה</button>

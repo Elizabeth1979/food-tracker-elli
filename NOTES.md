@@ -11,6 +11,20 @@ What was done in each work session and what's next. Newest first.
 
 **Next:** in the owner's screenshot the AI broke "אפונה" into tomatoes; likely because the tomato had no search matches to pick from (now fixed). Watch whether it recurs.
 
+## 2026-10-25: "זיהוי חכם" on words no longer looks like photo mode
+
+**Done:**
+- The owner tapped "זיהוי חכם" from the search and thought it wanted a photo: words being read showed the same big dark photo frame as a photo being read, just empty. `Reading` without a photo is now one status line with a small spinner.
+- Screen test: the "reading" status for words is a line, not the frame (fails without the fix).
+
+## 2026-10-25: quick add on the day screen; the gum fixed
+
+**Done:**
+- The owner wanted her daily things (the morning coffee) one tap away without the ＋ window. Today's summary now has "הוספה מהירה": the 6 most usual things (same list and order as "הרגילים שלך", only ones with an amount on record), one tap adds last time's amount to the meal of the time of day, a toast with "בטל". The usual-list logic moved into one hook (`useUsual` in `AddDialog.tsx`) used by both; long MoH names show their head (`head` in `lib.ts`), screen readers get the full name. Screen test: tap adds to lunch, בטל removes it, not shown on other days.
+- Data (with the owner's OK): her 3 Bazooka entries were the sugared MoH gum (312 kcal/100 g); she chews her own sugar-free one, so they now point to "גומי לעיסה בטעם בזוקה ללא סוכר" (151 kcal less), which leads `profiles.recent`. The six MoH gums (moh-4794..4799) are hidden for her.
+
+**Next:** her own gum's name lacks "מסטיק", so searching "מסטיק" now finds nothing; asked whether to rename it. Her saved meal "קפה" (coffee + 1 tbsp ghee, 88 kcal) is what she logs daily as two entries; the quick row offers it.
+
 ## 2026-10-24: each vitamin row opens: which foods, what it does, how its goal was set
 
 **Done:**

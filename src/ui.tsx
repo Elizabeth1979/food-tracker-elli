@@ -87,9 +87,11 @@ export function usePhotoUrl(file: File | null) {
   return src;
 }
 
-// Something being read: the photo dimmed under a spinner and what's happening (words alone: no photo).
+// Something being read: the photo dimmed under a spinner and what's happening. Words alone get a status line, not
+// an empty photo frame, which looked as if a photo was being read.
 export function Reading({ file, text }: { file: File | null; text: string }) {
   const src = usePhotoUrl(file);
+  if (!file) return <p className="why" role="status"><span className="spinner" aria-hidden="true" />{text}</p>;
   return (
     <figure className="reading" role="status">
       {src && <img src={src} alt="" />}

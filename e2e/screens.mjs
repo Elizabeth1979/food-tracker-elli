@@ -166,6 +166,9 @@ test('a restaurant dish the search doesn\'t know: a question, then its ingredien
   await openAdd();
   await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('מרק תירס');
   await button('זיהוי חכם: ״מרק תירס״', dialog()).tap();
+  // words alone: a line saying it's being read, not the big photo frame (the owner thought it wanted a photo)
+  const reading = dialog().getByRole('status').filter({ hasText: 'מזהה את המנה…' });
+  assert.ok((await reading.boundingBox()).height < 60);
   // where the answer changes the calories a lot, the AI asks first: one tap, pressed until tapped again
   const how = dialog().getByRole('group', { name: 'איך היה המרק?' });
   await how.waitFor();
@@ -317,6 +320,22 @@ test('a usual food: ＋ adds last time\'s amount; its name opens the amount pick
   await button('סיום', dialog()).tap();
   await dialog().waitFor({ state: 'detached' });
   assert.equal(await entries('ארוחת צהריים').count(), 0);
+});
+
+test('the day\'s quick add: one tap adds the usual amount to the meal of the time of day, בטל takes it back', async () => {
+  const quick = page.getByRole('region', { name: 'הוספה מהירה' });
+  const first = quick.getByRole('button').first();
+  const name = (await first.innerText()).split(/[,\n]/)[0]; // the name's head, as the toast shows it
+  const before = await entries('ארוחת צהריים').count();
+  await first.tap(); // 13:00: lunch
+  await page.getByRole('status').filter({ hasText: `נוסף ״${name}״ לצהריים` }).waitFor();
+  assert.ok(await entries('ארוחת צהריים').count() > before);
+  await button('בטל', page.getByRole('status').filter({ hasText: 'נוסף' })).tap();
+  await page.waitForFunction((n) => document.querySelectorAll('[aria-label="ארוחת צהריים"] [aria-label^="מחק: "]').length === n, before);
+  assert.equal(await dialog().count(), 0); // no window: that's the point
+  await button('יום קודם').tap();
+  assert.equal(await quick.count(), 0); // today only
+  await button('יום הבא').tap();
 });
 
 test('what fits in what\'s left: today only, the usual things that fit, one tap each', async () => {
