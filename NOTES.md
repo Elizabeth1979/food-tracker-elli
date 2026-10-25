@@ -2,6 +2,11 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-25: water from the quick add no longer says it went to a meal
+
+**Done:**
+- The owner tapped "מים ללא פירוט נוסף" in the quick add at dinner time and the message said "נוסף ... לערב", though water goes to its own line. Now it says "לשתייה". One helper for "added to where" (`placeOf` in `lib.ts`), used by the quick add and the foods page. Screen test: water logged by search, then from the quick add.
+
 ## 2026-10-25: "עגבנייה" is found; a photo's note is a big box and stays in view
 
 **Done:**
