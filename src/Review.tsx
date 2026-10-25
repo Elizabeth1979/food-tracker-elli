@@ -3,12 +3,13 @@ import type { Ctx } from './App';
 import { GRAMS, dishItem, itemFor, matchFoods, parseLine, searchFoods, splitAnd, sum, unitFor, unitsOf, type Food, type Item, type Parsed, type Unit } from './lib';
 import { Modal, Why } from './ui';
 import { FoodForm } from './Foods';
-import { NutLine } from './AddDialog';
+import { NewUnit, NutLine, UnitOptions, unitSaver } from './AddDialog';
 import { Icon } from './icons';
 import { ArticleLink } from './Guide';
 
 // `q` set: the row is searching the whole database for a different food (the match or the photo got it wrong).
-type Row = { id: number; p: Parsed; options: Food[]; food: Food | null; qty: string; unit: Unit; q?: string };
+// `adding`: typing a new unit for its food.
+type Row = { id: number; p: Parsed; options: Food[]; food: Food | null; qty: string; unit: Unit; q?: string; adding?: boolean };
 
 // The AI's pick (p.foodId) leads the options, the search's matches follow.
 const rowFor = (ctx: Ctx, p: Parsed, id: number, food?: Food): Row => {
@@ -36,6 +37,9 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
   };
   const set = (id: number, patch: Partial<Row>) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const pick = (r: Row, f: Food) => { const a = unitFor(f, r.p); set(r.id, { food: f, qty: String(a.qty), unit: a.unit, q: undefined, options: [f, ...r.options.filter((o) => o.id !== f.id)] }); };
+  // The new unit goes on the food in every row that has it; this row switches to one of it.
+  const saveUnit = (r: Row, u: Unit) => unitSaver(ctx, r.food!, (f) => setRows((rs) => rs.map((x) => (x.food?.id !== f.id ? x
+    : { ...x, food: f, options: x.options.map((o) => (o.id === f.id ? f : o)), ...(x.id === r.id && { unit: u, qty: '1', adding: false }) }))))(u);
   const choose = (r: Row, v: string) => (v === '+' ? setCreating(r) : v === '?' ? set(r.id, { q: '' }) : pick(r, r.options.find((f) => f.id === v)!));
 
   // A dish's ingredients go in as the dish, where its first ingredient was
@@ -99,12 +103,16 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
               {r.food && r.q === undefined && (
                 <div className="amount-row">
                   <input type="number" inputMode="decimal" min="0" step="any" aria-label="כמות" value={r.qty} onChange={(e) => set(r.id, { qty: e.target.value })} />
-                  <select value={r.unit.n} aria-label="יחידה" onChange={(e) => { const u = units.find((x) => x.n === e.target.value)!; set(r.id, { unit: u, qty: u.g === 1 ? String(r.food!.servingG) : '1' }); }}>
-                    {units.map((u) => <option key={u.n} value={u.n}>{u.g === 1 ? u.n : `${u.n} (${u.g} ג׳)`}</option>)}
+                  <select value={r.adding ? '+' : r.unit.n} aria-label="יחידה" onChange={(e) => {
+                    if (e.target.value === '+') return set(r.id, { adding: true });
+                    const u = units.find((x) => x.n === e.target.value)!; set(r.id, { unit: u, qty: u.g === 1 ? String(r.food!.servingG) : '1' });
+                  }}>
+                    <UnitOptions units={units} canAdd />
                   </select>
                   <b className="nowrap">{it!.kcal} קק״ל</b>
                 </div>
               )}
+              {r.food && r.adding && <NewUnit onCancel={() => set(r.id, { adding: false })} onSave={(u) => saveUnit(r, u)} />}
             </div>
           </Fragment>
         );

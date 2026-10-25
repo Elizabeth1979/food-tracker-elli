@@ -32,39 +32,49 @@ export function Amount({ food, init, onPick, cta, onAddUnit, named }: { food: Fo
   const [unit, setUnit] = useState(() => units.find((u) => u.n === init?.unit)
     ?? (food.source === 'moh' ? PREFERRED.map((n) => units.find((u) => u.n === n)).find(Boolean) : units[1]) ?? units[0]);
   const [qty, setQty] = useState(String(init?.qty ?? (unit.g === 1 ? food.servingG : 1)));
-  const [newUnit, setNewUnit] = useState<UnitDraft | null>(null);
+  const [adding, setAdding] = useState(false);
   const it = itemFor(food, Number(qty) || 0, unit);
   const why = useId();
-  const saveUnit = async () => {
-    const u = unitOf(newUnit!);
-    if (!u.n || !(u.g > 0)) return;
+  const saveUnit = async (u: Unit) => {
     await onAddUnit!(u);
-    setExtra([...extra, u]); setUnit(u); setQty('1'); setNewUnit(null);
+    setExtra([...extra, u]); setUnit(u); setQty('1'); setAdding(false);
   };
   return (
     <div className="amount">
       {named && <header><h3>{food.name}</h3><b>{it.kcal} קק״ל</b></header>}
       <div className="amount-row">
         <input type="number" inputMode="decimal" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} autoFocus onFocus={(e) => e.target.select()} />
-        <select value={newUnit ? '+' : unit.n} onChange={(e) => {
-          if (e.target.value === '+') return setNewUnit({ k: '1', n: '', g: '' });
+        <select value={adding ? '+' : unit.n} onChange={(e) => {
+          if (e.target.value === '+') return setAdding(true);
           const u = units.find((x) => x.n === e.target.value)!; setUnit(u); setQty(u.g === 1 ? String(food.servingG) : '1');
         }}>
-          {units.map((u) => <option key={u.n} value={u.n}>{u.g === 1 ? u.n : `${u.n} (${u.g} ג׳)`}</option>)}
-          {onAddUnit && <option value="+">＋ יחידה חדשה…</option>}
+          <UnitOptions units={units} canAdd={!!onAddUnit} />
         </select>
       </div>
-      {newUnit && (
-        <div className="unit-row">
-          <p className="muted small">{UNIT_HINT}</p>
-          <UnitInputs d={newUnit} set={setNewUnit} autoFocus />
-          <button className="btn small primary" onClick={saveUnit}>שמור</button>
-          <button className="icon" aria-label="ביטול" onClick={() => setNewUnit(null)}><Icon name="x" /></button>
-        </div>
-      )}
+      {adding && <NewUnit onSave={saveUnit} onCancel={() => setAdding(false)} />}
       <NutLine n={it} kcal={!named} />
       <button className="btn primary" disabled={!it.grams} aria-describedby={it.grams ? undefined : why} onClick={() => onPick(it)}>{cta}</button>
       {!it.grams && <Why id={why}>כתבו כמות גדולה מאפס כדי להוסיף</Why>}
+    </div>
+  );
+}
+
+// A food's units for a <select>; `canAdd` ends the list in "＋ יחידה חדשה…" (value "+").
+export const UnitOptions = ({ units, canAdd }: { units: Unit[]; canAdd?: boolean }) => <>
+  {units.map((u) => <option key={u.n} value={u.n}>{u.g === 1 ? u.n : `${u.n} (${u.g} ג׳)`}</option>)}
+  {canAdd && <option value="+">＋ יחידה חדשה…</option>}
+</>;
+
+// Typing a size the food doesn't list ("יחידה גדולה" = 250 ג׳); saved on the food, so it's there next time.
+export function NewUnit({ onSave, onCancel }: { onSave: (u: Unit) => Promise<unknown>; onCancel: () => void }) {
+  const [d, setD] = useState<UnitDraft>({ k: '1', n: '', g: '' });
+  const save = () => { const u = unitOf(d); if (u.n && u.g > 0) void onSave(u); };
+  return (
+    <div className="unit-row">
+      <p className="muted small">{UNIT_HINT}</p>
+      <UnitInputs d={d} set={setD} autoFocus />
+      <button className="btn small primary" onClick={save}>שמור</button>
+      <button className="icon" aria-label="ביטול" onClick={onCancel}><Icon name="x" /></button>
     </div>
   );
 }

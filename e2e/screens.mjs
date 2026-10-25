@@ -147,6 +147,19 @@ test('add what the photo missed, then add all to the chosen meal', async () => {
   await button('הוסף', dialog()).tap();
   assert.equal(await foods.count(), rows + 1);
   assert.match(await foods.last().evaluate((s) => s.selectedOptions[0].text), /^פיתה, פיתה ביס/);
+  // a size the database doesn't list: added on the spot, and kept on the food (the other pita row has it too)
+  await dialog().getByRole('textbox', { name: 'הוספת מזון לרשימה' }).fill('פיתה');
+  await button('הוסף', dialog()).tap();
+  const units = dialog().getByRole('combobox', { name: 'יחידה' });
+  await units.last().selectOption('+');
+  await dialog().getByRole('textbox', { name: 'שם היחידה' }).fill('פיתה ענקית');
+  await dialog().getByRole('spinbutton', { name: 'שוקלות יחד (גרם)' }).fill('150');
+  await button('שמור', dialog()).tap();
+  await page.waitForFunction(() => [...document.querySelectorAll('select[aria-label="יחידה"]')].at(-1).selectedOptions[0].text === 'פיתה ענקית (150 ג׳)');
+  assert.equal(await dialog().getByRole('spinbutton', { name: 'כמות' }).last().inputValue(), '1');
+  const pitaUnits = await units.nth(-2).evaluate((s) => [...s.options].map((o) => o.text));
+  assert.ok(pitaUnits.includes('פיתה ענקית (150 ג׳)'), `${pitaUnits}`);
+  await button('הסר: פיתה', dialog()).last().tap();
   // typing shows matching foods to pick from, keeping the amount typed
   await dialog().getByRole('textbox', { name: 'הוספת מזון לרשימה' }).fill('2 עגבני');
   await button('עגבניה, טריה', dialog()).tap();
