@@ -88,6 +88,15 @@ test('meal parser: words, "and", sizes and joined numbers', () => {
   assert.deepEqual(items('שתי פרוסות לחם'), [['לחם', 2, 'פרוסה']]);
   assert.deepEqual(items('כף גדושה סוכר'), [['סוכר', null, 'כף גדושה']]);
   assert.deepEqual(items('לחם עם חמאה'), [['לחם', null, null], ['חמאה', null, null]]);
+  // spoken: "של" after an amount, and a number with an extra yod
+  assert.deepEqual(items('שתי כפות של עגבנייה'), [['עגבניה', 2, 'כף']]);
+  assert.deepEqual(items('שניים מלפפונים, כמה שניצלים'), [['מלפפונים', 2, null], ['שניצלים', 3, null]]);
+});
+
+test('spelled with an extra yod or vav, a food is still found', () => {
+  // the owner's "שתי כפות של עגבנייה" found nothing: the database spells it "עגבניה"
+  assert.match(first('עגבנייה'), /^עגבניה, טריה/);
+  assert.match(first('לחמנייה'), /^לחמניה/);
 });
 
 test('unitFor: bare numbers, named units and fallbacks', () => {
@@ -139,6 +148,9 @@ test('staples find the plain everyday version', () => {
   assert.match(first('פיתה'), /^פיתה, פיתה ביס/); // not toasted ("קלויה") or a brand's
   assert.match(first('פיתות'), /^פיתה, פיתה ביס/);
   assert.match(first('פיתה דרוזית'), /^פיתה דרוזית/); // a typed kind still wins
+  assert.match(first('לחמניה'), /^לחמניה לבנה/); // not anise
+  assert.match(first('שניצלים'), /^שניצל חזה עוף/); // not spinach or corn
+  assert.match(first('שניצל תירס'), /^שניצל תירס/);
 });
 
 test('calories that don\'t fit the macros: the owner\'s cottage cheese, its sodium read as calories', () => {

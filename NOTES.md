@@ -2,6 +2,15 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-25: "עגבנייה" is found; a photo's note is a big box and stays in view
+
+**Done:**
+- The owner's salad note said "שתי כפות של עגבנייה" and the tomato wasn't found: the database spells it "עגבניה" (and has both "לחמניה" and "לחמנייה"). Search now matches with one yod/vav either way (`norm` in `search.ts`), and the parser skips the spoken "של" after an amount. "לחמניה" opens on a white roll and "שניצלים" on a fried chicken breast schnitzel (`STAPLES`). Tests in `search.test.ts`.
+- A photo's note is now a 3-line box, and it's the same text as the typed meal, so while the photo is read the note stays in view (it showed the empty box's example). Screen test checks it.
+- `meal-photo` prompt: the note is often dictated, so read a misheard word as the food that fits the meal. Redeployed.
+
+**Next:** in the owner's screenshot the AI broke "אפונה" into tomatoes; likely because the tomato had no search matches to pick from (now fixed). Watch whether it recurs.
+
 ## 2026-10-24: each vitamin row opens: which foods, what it does, how its goal was set
 
 **Done:**
