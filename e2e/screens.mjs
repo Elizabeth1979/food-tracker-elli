@@ -164,6 +164,9 @@ test('a restaurant dish the search doesn\'t know: a question, then its ingredien
   await openAdd();
   await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('מרק תירס');
   await button('זיהוי חכם: ״מרק תירס״', dialog()).tap();
+  // words alone: a line saying it's being read, not the big photo frame (the owner thought it wanted a photo)
+  const reading = dialog().getByRole('status').filter({ hasText: 'מזהה את המנה…' });
+  assert.ok((await reading.boundingBox()).height < 60);
   // where the answer changes the calories a lot, the AI asks first: one tap, pressed until tapped again
   const how = dialog().getByRole('group', { name: 'איך היה המרק?' });
   await how.waitFor();
