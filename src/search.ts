@@ -8,24 +8,29 @@ export const unitsOf = (f?: Food | null): Unit[] => [{ n: GRAMS, g: 1 }, ...json
 export const json = <T,>(x: unknown, d: T): T => (typeof x === 'string' ? JSON.parse(x) : (x as T) ?? d);
 
 // ---------- search ----------
-export const norm = (s: string) => s.toLowerCase().replace(/["'׳״`,.()\-]/g, ' ').replace(/\s+/g, ' ').trim();
+// Hebrew is spelled with or without an extra yod or vav, and the database has both ("לחמניה", "לחמנייה"):
+// "עגבנייה" must find "עגבניה". So both sides are matched with a single one.
+export const norm = (s: string) => s.toLowerCase().replace(/["'׳״`,.()\-]/g, ' ').replace(/יי/g, 'י').replace(/וו/g, 'ו').replace(/\s+/g, ' ').trim();
+// Word lists are compared with normalized text, so they're normalized too ("צוואר", "שניים").
+const normKeys = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [norm(k), v]));
 // Food Frequency Questionnaire groups: averages over several foods ("grapes or raisins"), not real foods.
 export const isFFQ = (f: { name: string }) => f.name.startsWith('FFQ');
 // Forms people rarely mean unless they type the word: "ענבים" should find grapes before grape juice or grape-seed oil,
 // "מרק תירס" a soup before a packet one ("נמס בכוס, מוכן מאבקה"),
 // and "ביצה" a hen's egg before a turkey's.
 const PROCESSED = ['מיץ', 'שמן', 'סירופ', 'בסירופ', 'משומר', 'משומרים', 'משקה', 'אבקה', 'אבקת', 'מאבקה', 'מאבקת', 'נמס', 'ממרח', 'חטיף', 'עוגיות', 'מחית', 'רוטב', 'תרכיז',
-  'מיובש', 'מיובשת', 'מיובשים', 'מוס', 'במילוי', 'ברוטב', 'מיונז', 'סוכר', 'מסוכר', 'ממותק', 'אפוי', 'מטוגן', 'מטוגנת', 'מטוגנים', 'צ יפס', 'בבלילה', 'חביתה', 'מתערובת', 'בגריל', 'צלוי', 'צלויה', 'פצפוצי'];
+  'מיובש', 'מיובשת', 'מיובשים', 'מוס', 'במילוי', 'ברוטב', 'מיונז', 'סוכר', 'מסוכר', 'ממותק', 'אפוי', 'מטוגן', 'מטוגנת', 'מטוגנים', 'צ יפס', 'בבלילה', 'חביתה', 'מתערובת', 'בגריל', 'צלוי', 'צלויה', 'פצפוצי'].map(norm);
 const RARE = ['אם', 'תינוקות', 'הודו', 'בופאלו', 'נאקות', 'גמלים', 'כבשים', 'עזים', 'אווז', 'ברווז', 'שליו',
   // organs, odd cuts and fast food: "עוף" means the meat, not its liver, feet or a McDonald's item
   'לב', 'לבבות', 'כבד', 'טחול', 'קורקבן', 'קורקבנים', 'כליות', 'לשון', 'מוח', 'קיבה', 'גב', 'צוואר', 'עצמות', 'רגליים',
-  'מקדונלדס', 'גלוטן', 'הצומח']; // gluten-free and plant-based ("מן הצומח") versions only when typed
+  'מקדונלדס', 'גלוטן', 'הצומח'].map(norm); // gluten-free and plant-based ("מן הצומח") versions only when typed
 // Words a photo or a person uses that the database names otherwise: mashed potato is "פירה", and "חלבונים" are egg whites
 // ("חלבון" alone is protein too).
 const SAME: Record<string, string> = { מעוך: 'פירה', מעוכים: 'פירה', מעוכה: 'פירה', חלבונים: 'ביצה חלבון' };
-const FRESH = ['טרי', 'טריה', 'טריים', 'טריות', 'רגיל'];
-// Everyday staples whose plain entry loses on name length alone: "פיתה" means a regular pita, not a toasted one.
-const STAPLES: Record<string, string> = { פיתה: 'moh-1946' };
+const FRESH = ['טרי', 'טריה', 'טריים', 'טריות', 'רגיל'].map(norm);
+// Everyday staples whose plain entry loses on name length alone: "פיתה" means a regular pita, not a toasted one,
+// "לחמניה" a white roll, not an anise one, and "שניצל" a fried chicken breast one, not spinach.
+const STAPLES: Record<string, string> = { פיתה: 'moh-1946', לחמניה: 'moh-10124', שניצל: 'moh-818' };
 // "ביצים" should find "ביצה", "עגבניות" "עגבניה": also accept a rough singular of Hebrew plurals.
 // A singular can end in a final letter: "לימונים", "חלבוני ביצה" find "לימון", "חלבון" (and "ביצים" still "ביצ…").
 const FINAL: Record<string, string> = { כ: 'ך', מ: 'ם', נ: 'ן', פ: 'ף', צ: 'ץ' };
@@ -62,7 +67,7 @@ export function searchFoods(foods: Food[], q: string, recent: string[]) {
     if ((has(first, 'עם') || has(first, 'או')) && !words.includes('עם')) s += 10; // mixed dishes: "אורז עם בצל"
     // fresh produce: exactly what was typed ("גזר, טרי") before a longer name that starts with it ("גזר לבן", parsnip)
     if (FRESH.some((w) => has(name, w))) s -= forms(query).includes(first) ? 4 : 3;
-    if (forms(query).some((w) => STAPLES[w] === f.id)) s -= 15;
+    if (forms(query).some((w) => STAPLES[w] === f.id)) s -= 20;
     return s + f.name.length / 100;
   };
   // With nothing typed the list is "recent": newest first, nothing else counts.
@@ -77,18 +82,18 @@ export function searchFoods(foods: Food[], q: string, recent: string[]) {
 // foodId: the database food the AI chose for it. dish: the dish it is one ingredient of (a dish the database lacks).
 export type Parsed = { text: string; query: string; qty: number | null; unit: string | null; grams?: number; hidden?: boolean; foodId?: string; dish?: string };
 
-const NUMBERS: Record<string, number> = {
+const NUMBERS: Record<string, number> = normKeys({
   חצי: 0.5, רבע: 0.25, אחד: 1, אחת: 1, שני: 2, שתי: 2, שניים: 2, שתיים: 2, זוג: 2, שלוש: 3, שלושה: 3, כמה: 3,
   ארבע: 4, ארבעה: 4, חמש: 5, חמישה: 5, שש: 6, שישה: 6, שבע: 7, שבעה: 7, שמונה: 8, תשע: 9, תשעה: 9, עשר: 10, עשרה: 10,
-};
+});
 // Unit words as people type them -> the unit name the food database uses. Plurals and abbreviations included.
-const UNITS: Record<string, string> = {
+const UNITS: Record<string, string> = normKeys({
   גרם: GRAMS, גר: GRAMS, ג: GRAMS, g: GRAMS, gr: GRAMS, גרמים: GRAMS, מל: GRAMS, ml: GRAMS,
   כף: 'כף', כפות: 'כף', כפית: 'כפית', כפיות: 'כפית', כוס: 'כוס', כוסות: 'כוס', ספל: 'ספל', ספלים: 'ספל',
   פרוסה: 'פרוסה', פרוסות: 'פרוסה', עלה: 'עלה', עלים: 'עלה', יחידה: 'יחידה', יחידות: 'יחידה', גביע: 'גביע', גביעים: 'גביע',
   מנה: 'מנה', מנות: 'מנה', חופן: 'חופן', חופנים: 'חופן', קערה: 'קערה', קערית: 'קערית', צלחת: 'צלחת', פלח: 'פלח', פלחים: 'פלח',
   ביס: 'ביס', ביסים: 'ביס', כדור: 'כדור', שקית: 'שקית', אריזה: 'אריזה', בקבוק: 'בקבוק', פחית: 'פחית', קופסה: 'קופסה',
-};
+});
 // Typical weights for when a food has no unit of that name.
 export const FALLBACK_G: Record<string, number> = { כף: 15, כפית: 5, כוס: 240, ספל: 250, פרוסה: 30, גביע: 150, מנה: 150, חופן: 30, קערה: 300, קערית: 150, צלחת: 300, ביס: 15 };
 
@@ -114,6 +119,8 @@ export function parseLine(text: string): Parsed[] {
       const joined = /^ו\S/.test(raw) && (num(raw.slice(1)) != null || UNITS[raw.slice(1)] != null);
       const t = joined ? raw.slice(1) : raw;
       const n = num(t), u = UNITS[t];
+      // "שתי כפות של עגבניה": the "של" after an amount is just speech
+      if (t === 'של' && !cur.words.length && (cur.qty != null || cur.unit)) { cur.raw.push(raw); continue; }
       // a second amount after a named food belongs to the next item: "יוגורט 150 גרם 10 ענבים"
       if (cur.words.length && (n != null || u) && (joined || (n != null ? cur.qty != null || cur.unit != null : cur.unit != null))) flush();
       if (n != null && cur.qty == null && !cur.unit) cur.qty = n;

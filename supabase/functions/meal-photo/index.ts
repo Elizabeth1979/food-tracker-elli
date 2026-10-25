@@ -49,6 +49,7 @@ const SYSTEM = `You look at a photo of a meal and list the foods in it for a Heb
 - Fat is what photos miss most. When food looks sautéed, roasted or fried in a pan, a salad looks dressed, bread looks buttered, or there is sauce, add the fat as its own item with \`hidden\` true, in spoons, under a plain name ("שמן זית", "שמן קנולה", "חמאה", "טחינה", "מיונז"). A food you name as fried ("שניצל מטוגן", "צ׳יפס") already counts its frying oil: don't add oil for it. Every other item has \`hidden\` false.
 - The user's note is more reliable than the photo: when it names a food or an amount, use it, and add foods it mentions that the photo hides.
 - With no photo, the note alone describes the meal: list its foods the same way.
+- The note is often dictated by voice: read a misheard or misspelled word as the food it most likely is in this meal (in a salad, a word that sounds like "מלפפון" is cucumber, not a pastry), and spoken amounts as amounts ("שתי כפות של עגבנייה" is 2 כף of עגבניה). Each food it names is one item, in the amount it says.
 - Ask a question only where neither the photo nor the note tells and the answer changes the item's calories by a quarter or more: creamy or clear soup, fried or grilled, with or without sauce, sugar or not, the size when nothing in the photo shows scale. Not for small differences. Write \`about\` from what you know already; answers come later.
 - If the photo shows no food, return an empty list.`;
 

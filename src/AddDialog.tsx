@@ -382,7 +382,7 @@ function PhotoNote({ files, setFiles, note, setNote, onRead }: { files: File[]; 
       {files.length < MAX_PHOTOS && <PhotoPick camera="עוד צילום" gallery="עוד מהגלריה" multiple onFile={(f) => setFiles([...files, f].slice(0, MAX_PHOTOS))} />}
       <label>
         <span>הערה (לא חובה): מה לא רואים או קשה לזהות</span>
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="גבינה בולגרית מגורדת, פסטה רגילה, כף שמן" />
+        <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="גבינה בולגרית מגורדת, פסטה רגילה, כף שמן" />
       </label>
       <button className="btn primary" onClick={onRead}>זהה מזונות</button>
     </div>
@@ -413,7 +413,6 @@ function TextOrPhoto({ ctx, files = [], describe, cta, onAdd }: { ctx: Ctx; file
   const [err, setErr] = useState('');
   const why = useId();
   const [picked, setPicked] = useState(files); // photos waiting for their note before they're read (from the list screen too)
-  const [note, setNote] = useState('');
   const match = async (a: Asking, answers: (string | undefined)[]) => {
     setAsk(null); setBusy({ file: a.files[0] ?? null, text: 'מתאים למאגר המזון…' });
     try { setParsed(await matchMeal(ctx.foods, ctx.recent, a.seen, a.said, answers)); setShots(a.files); } finally { setBusy(null); }
@@ -435,7 +434,8 @@ function TextOrPhoto({ ctx, files = [], describe, cta, onAdd }: { ctx: Ctx; file
     );
   if (ask) return <Questions questions={ask.seen.questions} onDone={(answers) => match(ask, answers)} />;
   if (picked.length)
-    return <PhotoNote files={picked} setFiles={setPicked} note={note} setNote={setNote} onRead={() => read(picked, note || text)} />;
+    // the note is the same text as the typed meal, so it stays in view while the photos are read
+    return <PhotoNote files={picked} setFiles={setPicked} note={text} setNote={setText} onRead={() => read(picked, text)} />;
   const empty = !text.trim();
   return (
     <div className="form">
