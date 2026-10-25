@@ -390,9 +390,23 @@ test('water: a glass at a time on its own line, not under a meal', async () => {
   await button('עוד כוס מים', water).tap();
   await water.getByRole('status').filter({ hasText: /^0\.5 \// }).waitFor();
   assert.equal(await entries('ארוחת צהריים').count(), 0); // logged at lunchtime, but not listed as lunch food
-  await button('פחות כוס מים', water).tap();
-  await water.getByRole('status').filter({ hasText: /^0\.25 \// }).waitFor();
-  await button('פחות כוס מים', water).tap();
+  // water in the quick add says where it went, its own line, not the meal of the hour (the owner's bug: "לצהריים")
+  await openAdd(); // her way in: water found by search ("מים ללא פירוט נוסף"), then one tap in the quick add
+  await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('מים');
+  await button(/^מים ללא פירוט נוסף/, dialog()).first().tap();
+  await button('הוסף', dialog()).tap();
+  await button(/^סיום · נוספו 1/, dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  await button('יום קודם').tap(); await button('יום הבא').tap(); // the quick add reloads the month with the water
+  const drunk = await amount();
+  await button(/^מים ללא פירוט נוסף/, page.getByRole('region', { name: 'הוספה מהירה' })).tap();
+  const toast = page.getByRole('status').filter({ hasText: /^נוסף ״מים ללא פירוט נוסף״ לשתייה/ });
+  await toast.waitFor();
+  await page.waitForFunction((was) => document.querySelector('[role=group][aria-label="מים"] [role=status]').innerText !== was, drunk);
+  assert.equal(await entries('ארוחת צהריים').count(), 0);
+  await button('בטל', toast).tap();
+  await water.getByRole('status').filter({ hasText: drunk }).waitFor();
+  while (await button('פחות כוס מים', water).isEnabled()) await button('פחות כוס מים', water).tap();
   await water.getByRole('status').filter({ hasText: /^0 \// }).waitFor();
 });
 

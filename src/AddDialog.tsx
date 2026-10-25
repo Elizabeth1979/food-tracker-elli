@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, MEALS, mealNow, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
+import { GRAMS, MEALS, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
 import { norm } from './search';
 import { goalsLeft, whatFits, type Goals } from './goals';
 import { FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
@@ -312,7 +312,7 @@ export function QuickAdd({ ctx, date, onAdded, onRemoved }: { ctx: Ctx; date: st
           </li>
         ))}
       </ul>
-      {just && <div className="toast" role="status">נוסף ״{head(just.name)}״ ל{MEALS.find((m) => m.key === just.es[0]?.meal)?.short} <button onClick={() => undo(just)}>בטל</button></div>}
+      {just && <div className="toast" role="status">נוסף ״{head(just.name)}״ ל{placeOf(just.es)} <button onClick={() => undo(just)}>בטל</button></div>}
     </section>
   );
 }
