@@ -2,6 +2,11 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-25: the meal photo moved from the diary list to the food's details
+
+**Done:**
+- The owner found the photo in the diary list in the way: it didn't sit next to any food. The list no longer shows it; tapping any food of that meal opens its details with the photo (tap to enlarge or delete). Photos still belong to the meal: they go or move with its last food, as before. Screen test: no photo in the list, the photo in the details; the delete/undo/move tests count photos through the details (fails with the photo back in the list).
+
 ## 2026-10-25: water from the quick add is a glass, and says so
 
 **Done:**

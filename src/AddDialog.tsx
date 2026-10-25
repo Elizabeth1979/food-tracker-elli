@@ -481,7 +481,8 @@ function Questions({ questions, onDone }: { questions: Question[]; onDone: (answ
   );
 }
 
-export function EntryDialog({ ctx, entry, onClose, onSaved, onDelete }: { ctx: Ctx; entry: Entry; onClose: () => void; onSaved: (e: Entry) => void; onDelete: () => void }) {
+// `photos`: the meal's photos, opened by `onPhoto`.
+export function EntryDialog({ ctx, entry, photos, onPhoto, onClose, onSaved, onDelete }: { ctx: Ctx; entry: Entry; photos: MealPhoto[]; onPhoto: (p: MealPhoto) => void; onClose: () => void; onSaved: (e: Entry) => void; onDelete: () => void }) {
   const [meal, setMeal] = useState(entry.meal as MealKey);
   const real = ctx.foods.find((x) => x.id === entry.foodId);
   const food = useMemo(() => itemFood(ctx.foods, entry as Item), [ctx.foods, entry]);
@@ -492,6 +493,11 @@ export function EntryDialog({ ctx, entry, onClose, onSaved, onDelete }: { ctx: C
   return (
     <Modal title={entry.name} onClose={onClose}>
       <div className="muted small">{amountLabel(entry)}</div>
+      {photos.length > 0 && (
+        <div className="meal-photos">
+          {photos.map((p, i) => <button key={p.path} aria-label={`תמונה ${i + 1}: ${MEALS.find((m) => m.key === p.meal)!.label}`} onClick={() => onPhoto(p)}><img src={p.url} alt="" /></button>)}
+        </div>
+      )}
       <MealSeg meal={meal} onChange={setMeal} />
       <Amount food={food} init={itemInit(entry as Item)} onPick={save} cta="שמור"
         onAddUnit={real ? unitSaver(ctx, real) : undefined} />
