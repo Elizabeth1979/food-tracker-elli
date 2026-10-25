@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, MEALS, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
+import { GRAMS, MEALS, mealNow, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
 import { norm } from './search';
 import { goalsLeft, whatFits, type Goals } from './goals';
 import { FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
@@ -76,6 +76,42 @@ export const unitSaver = (ctx: Ctx, f: Food, then?: (f: Food) => void) => async 
   then?.(nf);
 };
 
+// What you usually have: saved meals and single foods, with the last amount of each, from the past month.
+// `added` (this visit's additions) count as the latest, so a row added at another amount shows that amount.
+// Shared by the ＋ window and the day's quick-add row.
+function useUsual(ctx: Ctx, date: string, added: Entry[] = []) {
+  const [month, setMonth] = useState<Entry[] | null>(null);
+  useEffect(() => { loadEntries(addDays(date, -30), date).then(setMonth); }, [date]);
+  const last = useMemo(() => {
+    const m: Record<string, Entry> = {};
+    for (const e of [...month ?? []].sort((a, b) => a.date.localeCompare(b.date)).concat(added)) if (e.foodId) m[e.foodId] = e;
+    return m;
+  }, [month, added.map((e) => e.id).join()]);
+  // Order fixed when the dialog opens: adding moves a food up in "recent", and rows mustn't jump under your finger.
+  const [order] = useState(ctx.recent);
+  // Saved meals and single foods in one list, by how often you've had them this past month, at any meal, then by
+  // the most recent. A food counts each time it was logged; a saved meal each meal that had all of its foods.
+  // The same list whatever the meal: the owner wants it to stay put, with what she logs most at the top.
+  const usual = useMemo(() => {
+    const n: Record<string, number> = {};
+    const had: Record<string, Set<string>> = {}; // the foods of each meal eaten: "<date>|<meal>"
+    for (const e of month ?? []) if (e.foodId) {
+      n[e.foodId] = (n[e.foodId] ?? 0) + 1;
+      (had[`${e.date}|${e.meal}`] ??= new Set()).add(e.foodId);
+    }
+    const byScore = <T extends { score: number }>(xs: T[]) => xs.sort((a, b) => b.score - a.score); // stable: ties stay most recent first
+    const foods = byScore(searchFoods(ctx.foods, '', order).map((f) => ({ key: `f:${f.id}`, f, score: n[f.id] ?? 0 }))).slice(0, USUAL_MAX);
+    const saved = ctx.meals.map((m) => {
+      const items = mealItems(ctx.foods, m);
+      const ids = items.flatMap((it) => (it.foodId ? [it.foodId] : []));
+      const score = ids.length ? Object.values(had).filter((s) => ids.every((id) => s.has(id))).length : 0;
+      return { key: `m:${m.id}`, m, items, score };
+    });
+    return byScore([...foods, ...saved]);
+  }, [ctx.foods, ctx.meals, order, month]);
+  return { month, last, usual };
+}
+
 // Opens on what you usually eat, saved meals and single foods, each at the amount you had last time.
 // One tap on ＋ adds, a second takes it back out, and the dialog stays open until "סיום", so a whole meal is a few taps.
 // Tapping a food's name opens the amount picker on last time's amount, for a different amount this time.
@@ -102,40 +138,10 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
   const [busy, setBusy] = useState(false);
   // What this visit added, keyed by the row that added it ("m:<saved meal>", "f:<food>", or one-off keys).
   const [done, setDone] = useState<Record<string, Entry[]>>({});
-  // The past month, loaded once: the last amount of each food, and what you tend to have at each meal.
-  const [month, setMonth] = useState<Entry[] | null>(null);
-  useEffect(() => { loadEntries(addDays(date, -30), date).then(setMonth); }, [date]);
   const added = Object.values(done).flat();
-  // This visit's additions count as the latest, so a row added at another amount shows that amount.
-  const last = useMemo(() => {
-    const m: Record<string, Entry> = {};
-    for (const e of [...month ?? []].sort((a, b) => a.date.localeCompare(b.date)).concat(added)) if (e.foodId) m[e.foodId] = e;
-    return m;
-  }, [month, done]);
+  const { month, last, usual } = useUsual(ctx, date, added);
   const hits = useMemo(() => searchFoods(ctx.foods, q, ctx.recent), [ctx.foods, q, ctx.recent]);
   const meals = q ? ctx.meals.filter((m) => norm(m.name).includes(norm(q))) : ctx.meals;
-  // Order fixed when the dialog opens: adding moves a food up in "recent", and rows mustn't jump under your finger.
-  const [order] = useState(ctx.recent);
-  // Saved meals and single foods in one list, by how often you've had them this past month, at any meal, then by
-  // the most recent. A food counts each time it was logged; a saved meal each meal that had all of its foods.
-  // The same list whatever the meal: the owner wants it to stay put, with what she logs most at the top.
-  const usual = useMemo(() => {
-    const n: Record<string, number> = {};
-    const had: Record<string, Set<string>> = {}; // the foods of each meal eaten: "<date>|<meal>"
-    for (const e of month ?? []) if (e.foodId) {
-      n[e.foodId] = (n[e.foodId] ?? 0) + 1;
-      (had[`${e.date}|${e.meal}`] ??= new Set()).add(e.foodId);
-    }
-    const byScore = <T extends { score: number }>(xs: T[]) => xs.sort((a, b) => b.score - a.score); // stable: ties stay most recent first
-    const foods = byScore(searchFoods(ctx.foods, '', order).map((f) => ({ key: `f:${f.id}`, f, score: n[f.id] ?? 0 }))).slice(0, USUAL_MAX);
-    const saved = ctx.meals.map((m) => {
-      const items = mealItems(ctx.foods, m);
-      const ids = items.flatMap((it) => (it.foodId ? [it.foodId] : []));
-      const score = ids.length ? Object.values(had).filter((s) => ids.every((id) => s.has(id))).length : 0;
-      return { key: `m:${m.id}`, m, items, score };
-    });
-    return byScore([...foods, ...saved]);
-  }, [ctx.foods, ctx.meals, order, month]);
   const [more, setMore] = useState(false);
   // What fits in what's left, at the usual amount (a food never logged has none, so it's out); this visit's additions
   // count as eaten, and stay in the list to take back.
@@ -182,7 +188,7 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
     return it ? add(key, it) : setSel(food!); // no amount on record yet: ask once
   };
 
-  const mealPick = (r: { key: string; m: SavedMeal; items: Item[] }) => <Pick key={r.key} saved on={!!done[r.key]} name={r.m.name} detail={r.items.map((i) => i.name.split(',')[0]).join(' · ')}
+  const mealPick = (r: { key: string; m: SavedMeal; items: Item[] }) => <Pick key={r.key} saved on={!!done[r.key]} name={r.m.name} detail={r.items.map((i) => head(i.name)).join(' · ')}
     kcal={sum(r.items).kcal} onClick={() => toggle(r.key, () => r.items)} />;
   const foodPick = (r: { key: string; f: Food }) => {
     const e = last[r.f.id];
@@ -265,6 +271,53 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
     </Modal>
   );
 }
+
+// The day's quick-add row: your most usual things as buttons, one tap adds last time's amount to the meal of the time
+// of day, and "בטל" takes it back. For what you have daily (the morning coffee) without opening ＋.
+// Only what has an amount on record, so a tap never needs a question.
+export function QuickAdd({ ctx, date, onAdded, onRemoved }: { ctx: Ctx; date: string; onAdded: (e: Entry[]) => void; onRemoved: (e: Entry[]) => void }) {
+  const { last, usual } = useUsual(ctx, date);
+  const [just, setJust] = useState<{ name: string; es: Entry[] } | null>(null);
+  const uid = useId();
+  const picks = usual.flatMap((r) => {
+    const items = 'm' in r ? r.items : last[r.f.id] ? [pickItem(last[r.f.id])] : [];
+    return items.length ? [{ key: r.key, name: 'm' in r ? r.m.name : r.f.name, saved: 'm' in r, items }] : [];
+  }).slice(0, QUICK_SHOWN);
+  if (!picks.length) return null;
+  const add = async (p: (typeof picks)[number]) => {
+    ctx.addRecent(p.items.flatMap((i) => (i.foodId ? [i.foodId] : [])));
+    const es = await addEntries(date, mealNow(), p.items);
+    onAdded(es);
+    const now = { name: p.name, es };
+    setJust(now);
+    setTimeout(() => setJust((j) => (j === now ? null : j)), 6000);
+  };
+  const undo = async ({ es }: { es: Entry[] }) => {
+    setJust(null);
+    await Promise.all(es.map((e) => client.models.Entry.delete({ id: e.id })));
+    onRemoved(es);
+  };
+  return (
+    <section aria-labelledby={`${uid}-q`}>
+      <h3 id={`${uid}-q`} className="small muted">הוספה מהירה</h3>
+      <ul className="chips">
+        {picks.map((p) => (
+          <li key={p.key}>
+            <button onClick={() => add(p)}>
+              {/* only the name's head shows (MoH names run long); screen readers get all of it */}
+              {p.saved && <Icon name="utensils" />}<span className="grow">{head(p.name)}</span><span className="sr-only">{p.name.slice(head(p.name).length)}</span>
+              {p.saved && <span className="sr-only"> (ארוחה שמורה)</span>}
+              <small className="muted">{sum(p.items).kcal}<span className="sr-only"> קק״ל</span></small>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {just && <div className="toast" role="status">נוסף ״{head(just.name)}״ ל{MEALS.find((m) => m.key === just.es[0]?.meal)?.short} <button onClick={() => undo(just)}>בטל</button></div>}
+    </section>
+  );
+}
+
+const QUICK_SHOWN = 6;
 
 const USUAL_SHOWN = 10;
 const USUAL_MAX = 30; // single foods behind "עוד"; saved meals are all there

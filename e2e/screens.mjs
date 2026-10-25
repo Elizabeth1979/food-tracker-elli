@@ -317,6 +317,22 @@ test('a usual food: ＋ adds last time\'s amount; its name opens the amount pick
   assert.equal(await entries('ארוחת צהריים').count(), 0);
 });
 
+test('the day\'s quick add: one tap adds the usual amount to the meal of the time of day, בטל takes it back', async () => {
+  const quick = page.getByRole('region', { name: 'הוספה מהירה' });
+  const first = quick.getByRole('button').first();
+  const name = (await first.innerText()).split(/[,\n]/)[0]; // the name's head, as the toast shows it
+  const before = await entries('ארוחת צהריים').count();
+  await first.tap(); // 13:00: lunch
+  await page.getByRole('status').filter({ hasText: `נוסף ״${name}״ לצהריים` }).waitFor();
+  assert.ok(await entries('ארוחת צהריים').count() > before);
+  await button('בטל', page.getByRole('status').filter({ hasText: 'נוסף' })).tap();
+  await page.waitForFunction((n) => document.querySelectorAll('[aria-label="ארוחת צהריים"] [aria-label^="מחק: "]').length === n, before);
+  assert.equal(await dialog().count(), 0); // no window: that's the point
+  await button('יום קודם').tap();
+  assert.equal(await quick.count(), 0); // today only
+  await button('יום הבא').tap();
+});
+
 test('what fits in what\'s left: today only, the usual things that fit, one tap each', async () => {
   const ask = button(/^מה נכנס ב־\d+ קק״ל\?$/);
   // over the goal (2022 of 2000): nothing to ask; taking out snack foods (the saved meal again) until it asks
