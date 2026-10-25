@@ -223,6 +223,7 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 .why { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 15px; color: var(--muted); }
+.why .spinner { width: 20px; height: 20px; border-width: 3px; border-color: var(--line); border-top-color: var(--accent); }
 .unit-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .unit-row p { flex-basis: 100%; margin: 0; }
 .unit-row .unit-k { width: 56px; } .unit-row .unit-g { width: 72px; } .unit-row .unit-n { flex: 1; min-width: 6em; }

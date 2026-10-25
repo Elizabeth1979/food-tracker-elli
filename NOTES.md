@@ -2,6 +2,12 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-25: "זיהוי חכם" on words no longer looks like photo mode
+
+**Done:**
+- The owner tapped "זיהוי חכם" from the search and thought it wanted a photo: words being read showed the same big dark photo frame as a photo being read, just empty. `Reading` without a photo is now one status line with a small spinner.
+- Screen test: the "reading" status for words is a line, not the frame (fails without the fix).
+
 ## 2026-10-25: quick add on the day screen; the gum fixed
 
 **Done:**
