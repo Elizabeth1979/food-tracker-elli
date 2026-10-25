@@ -3,7 +3,7 @@ import { goalsLeft, goalsOf, type Goals } from './goals';
 import type { Ctx } from './App';
 import { MEALS, WATER, pickItem, addDays, addEntries, amountLabel, client, deletePhoto, movePhoto, fmtDate, isWater, listPhotos, loadEntries, mealNow, sum, today, type Entry, type MealKey, type MealPhoto } from './lib';
 import { DayGoals, GoalsInfo, Group, MicroGoals, Modal, Ring, WaterLine, confirmIt, promptIt } from './ui';
-import { AddDialog, EntryDialog } from './AddDialog';
+import { AddDialog, EntryDialog, QuickAdd } from './AddDialog';
 import { Icon } from './icons';
 import { ArticleLink } from './Guide';
 
@@ -18,6 +18,7 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
   const [adding, setAdding] = useState<MealKey | null>(() => (shortcut ? (MEALS.some((m) => m.key === shortcut) ? (shortcut as MealKey) : mealNow()) : null));
   const [fitting, setFitting] = useState<Goals | null>(null); // the ＋ window opened on what fits in what's left
   const [editing, setEditing] = useState<Entry | null>(null);
+  const [quick, setQuick] = useState(0); // the quick-add row reloads when the ＋ window closes: it may have added the usual things
   const [msg, setMsg] = useState('');
   // The deleted entry, with its meal's photos when it was the meal's last food (they go with it unless undone).
   const [undo, setUndo] = useState<{ e: Entry; photos: MealPhoto[] } | null>(null);
@@ -115,6 +116,7 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
           <Ring value={tot.kcal} goal={goal} size={140} center={<><b>{goal ? Math.abs(Math.round(goal - tot.kcal)) : tot.kcal}</b><small>{goal ? (goal - tot.kcal >= 0 ? 'נותרו' : 'חריגה') : 'קלוריות'}</small></>} />
           <button className="btn primary" onClick={() => setAdding(mealNow())}><Icon name="plus" />הוספה</button>
         </div>
+        {date === today() && <QuickAdd key={quick} ctx={ctx} date={date} onAdded={added} onRemoved={(es) => setEntries((cur) => cur!.filter((x) => !es.some((e) => e.id === x.id)))} />}
         {/* Only today, and only while there's room left: "what can I still eat?" from the usual things */}
         {date === today() && entries && left.kcal > 0 && <button className="link start" onClick={() => { setFitting(left); setAdding(mealNow()); }}><Icon name="apple" />מה נכנס ב־{Math.round(left.kcal)} קק״ל?</button>}
         <div>
@@ -177,7 +179,7 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
         <button className="btn" onClick={onExport}><Icon name="download" />ייצוא CSV / PDF</button>
       </div>
 
-      {adding && <AddDialog ctx={ctx} meal={adding} date={date} left={fitting ?? undefined} onClose={() => { setAdding(null); setFitting(null); }} onAdded={added}
+      {adding && <AddDialog ctx={ctx} meal={adding} date={date} left={fitting ?? undefined} onClose={() => { setAdding(null); setFitting(null); setQuick((n) => n + 1); }} onAdded={added}
         onRemoved={(es) => setEntries((cur) => cur!.filter((x) => !es.some((e) => e.id === x.id)))}
         onPhoto={(p) => { setPhotos((cur) => [...cur, p]); setOpen(p.meal, true); }} />}
       {viewing && (

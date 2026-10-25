@@ -37,6 +37,8 @@ export const WATER_GOAL_ML = 2000;
 const WATERS = new Set(['moh-9593', 'moh-4949', 'moh-10140', 'moh-4950', 'moh-4951', 'moh-4842']);
 export const isWater = (e: { foodId?: string | null }) => WATERS.has(e.foodId ?? '');
 
+// A food's name before its details: "קפה" of "קפה, מוכן מקפה טחון". For short lists; screen readers get the rest.
+export const head = (name: string) => name.split(',')[0];
 export const MEALS: { key: MealKey; label: string; short: string; icon: IconName }[] = [
   { key: 'breakfast', label: 'ארוחת בוקר', short: 'בוקר', icon: 'sunrise' },
   { key: 'lunch', label: 'ארוחת צהריים', short: 'צהריים', icon: 'sun' },
