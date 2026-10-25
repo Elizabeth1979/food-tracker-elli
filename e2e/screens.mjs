@@ -526,6 +526,11 @@ test('the phone back button closes a window, and returns from the reports tab to
   await dialog().waitFor({ state: 'detached' });
   await button(/דוחות/).tap();
   assert.ok(await button(/CSV/).isEnabled()); // reports opened, and today's entries are in range
+  const mealHeadings = () => page.getByRole('heading', { name: /^ארוחת/ }).count();
+  assert.equal(await mealHeadings(), 0); // each day's food list is for the PDF only; the diary shows it on screen
+  await page.emulateMedia({ media: 'print' });
+  assert.ok(await mealHeadings() > 0);
+  await page.emulateMedia({ media: 'screen' });
   await page.goBack();
   await button(/הוספה$/).waitFor();
 });

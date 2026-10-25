@@ -264,14 +264,14 @@ input[type=radio] { width: 22px; height: 22px; min-height: 0; padding: 0; flex: 
 .tbl th, .tbl td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: start; }
 .tbl th { color: var(--muted); font-weight: 500; }
 .detail-row { display: flex; gap: 10px; font-size: 14px; padding: 3px 0; }
-.print-title { display: none; }
+.print-only { display: none; }
 
 @media print {
   :root { --bg: #fff; --card: #fff; --card2: #f3f5f8; --line: #dde2e8; --text: #111; --muted: #5b6573; }
   body { background: #fff; }
   .tabs, .no-print, .banner { display: none !important; }
   .app { padding: 0; } main { padding: 0; }
-  .print-title { display: block; margin-bottom: 12px; }
+  .print-only { display: block; }
   .card { border: 1px solid var(--line); break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
