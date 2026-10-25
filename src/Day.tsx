@@ -25,6 +25,7 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
   const undone = useRef(new Set<string>());
   const [toggled, setToggled] = useState<Record<string, boolean>>({}); // `${date}:${meal}` → open
 
+  // A meal's photos show in its foods' details, not in the list: they'd crowd it and don't sit next to any one food.
   const [photos, setPhotos] = useState<MealPhoto[]>([]);
   const [viewing, setViewing] = useState<MealPhoto | null>(null);
 
@@ -142,7 +143,6 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
       <Group title="ארוחות" body="">
       {MEALS.map((m) => {
         const es = food.filter((e) => e.meal === m.key);
-        const ps = photos.filter((p) => p.meal === m.key);
         const open = isOpen(m.key);
         return (
           <section key={m.key} className="meal" aria-label={m.label}>
@@ -155,11 +155,6 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
               </h3>
             </header>
             <div id={`meal-${m.key}`} hidden={!open}>
-              {ps.length > 0 && (
-                <div className="meal-photos">
-                  {ps.map((p, i) => <button key={p.path} aria-label={`תמונה ${i + 1}: ${m.label}`} onClick={() => setViewing(p)}><img src={p.url} alt="" /></button>)}
-                </div>
-              )}
               {es.map((e) => (
                 <div key={e.id} className="row" role="button" tabIndex={0} onClick={() => setEditing(e)}>
                   <div className="grow"><div>{e.name}</div><small className="muted">{amountLabel(e)}</small></div>
@@ -189,7 +184,7 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
         </Modal>
       )}
       {editing && (
-        <EntryDialog ctx={ctx} entry={editing} onClose={() => setEditing(null)} onDelete={() => { remove(editing); setEditing(null); }}
+        <EntryDialog ctx={ctx} entry={editing} photos={photos.filter((p) => p.meal === editing.meal)} onPhoto={setViewing} onClose={() => setEditing(null)} onDelete={() => { remove(editing); setEditing(null); }}
           onSaved={(e) => saved(editing, e)} />
       )}
     </div>
