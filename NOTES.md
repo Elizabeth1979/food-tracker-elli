@@ -2,6 +2,12 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-25: a new size from the photo's check list too
+
+**Done:**
+- The owner asked why a tomato has small/medium/large and a fried potato only "medium": each food's sizes are the ones the Ministry of Health measured. Grams are always there. A missing size could already be added ("＋ יחידה חדשה…") when adding one food, but not in the check list after a photo or typed meal. Now it can; it's saved on the food, like before. One `NewUnit` and `UnitOptions` (`AddDialog.tsx`) serve both windows.
+- Screen test: a size added in the check list is picked, and the food's other row has it too (fails without the option).
+
 ## 2026-10-25: the meal photo moved from the diary list to the food's details
 
 **Done:**
