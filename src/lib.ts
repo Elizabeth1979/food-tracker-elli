@@ -45,6 +45,9 @@ export const MEALS: { key: MealKey; label: string; short: string; icon: IconName
   { key: 'dinner', label: 'ארוחת ערב', short: 'ערב', icon: 'moon' },
   { key: 'snack', label: 'נשנושים ואחר', short: 'נשנושים', icon: 'apple' },
 ];
+// Where added entries show in the diary, for "added to …" messages: water has its own line, not the meal of the hour.
+export const placeOf = (es: { meal?: string | null; foodId?: string | null }[], long = false) =>
+  es.length && es.every(isWater) ? 'שתייה' : MEALS.find((m) => m.key === es[0]?.meal)?.[long ? 'label' : 'short'] ?? 'יומן';
 export const MACROS = [
   { key: 'carbs', label: 'פחמימות', color: 'var(--carbs)', kcalPerG: 4 },
   { key: 'fat', label: 'שומן', color: 'var(--fat)', kcalPerG: 9 },

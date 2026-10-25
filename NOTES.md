@@ -8,6 +8,17 @@ What was done in each work session and what's next. Newest first.
 - The owner asked why a tomato has small/medium/large and a fried potato only "medium": each food's sizes are the ones the Ministry of Health measured. Grams are always there. A missing size could already be added ("＋ יחידה חדשה…") when adding one food, but not in the check list after a photo or typed meal. Now it can; it's saved on the food, like before. One `NewUnit` and `UnitOptions` (`AddDialog.tsx`) serve both windows.
 - Screen test: a size added in the check list is picked, and the food's other row has it too (fails without the option).
 
+## 2026-10-25: the meal photo moved from the diary list to the food's details
+
+**Done:**
+- The owner found the photo in the diary list in the way: it didn't sit next to any food. The list no longer shows it; tapping any food of that meal opens its details with the photo (tap to enlarge or delete). Photos still belong to the meal: they go or move with its last food, as before. Screen test: no photo in the list, the photo in the details; the delete/undo/move tests count photos through the details (fails with the photo back in the list).
+
+## 2026-10-25: water from the quick add is a glass, and says so
+
+**Done:**
+- The owner tapped "מים ללא פירוט נוסף" in the quick add at dinner time and the message said "נוסף ... לערב", though water goes to its own line. Now it says "לשתייה".
+- Then: a water tap in the quick add repeated the last amount logged (240 ml cups from search). It now adds one glass (250 ml, like the water line's ＋) and says "נוספה כוס מים". Screen test logs water by search at another amount and checks the tap adds exactly 250 ml. One helper for "added to where" (`placeOf` in `lib.ts`), used by the quick add and the foods page. Screen test: water logged by search, then from the quick add.
+
 ## 2026-10-25: "עגבנייה" is found; a photo's note is a big box and stays in view
 
 **Done:**

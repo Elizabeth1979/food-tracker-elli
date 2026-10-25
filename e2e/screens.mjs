@@ -43,6 +43,22 @@ const openFoods = async () => { await button(/הגדרות/).tap(); await button
 const mealTab = (name) => dialog().getByRole('group', { name: 'ארוחה' }).getByRole('button', { name: new RegExp(name) });
 const meal = (label) => page.getByRole('region', { name: label });
 const entries = (label) => meal(label).getByRole('button', { name: /^מחק: / }); // one delete button per entry
+const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// a food's details window, from its row in the diary (the first food of the meal by default)
+const openEntry = async (label, n = 0) => {
+  const name = (await entries(label).nth(n).getAttribute('aria-label')).replace(/^מחק: /, '');
+  await meal(label).getByRole('button', { name: new RegExp(`^${esc(name)}`) }).first().tap();
+  await dialog().waitFor();
+};
+// the meal's photos, seen in its first food's details (the list itself doesn't show them)
+const photoCount = async (label) => {
+  if (!(await entries(label).count())) return 0;
+  await openEntry(label);
+  const n = await dialog().getByRole('button', { name: /^תמונה \d+:/ }).count();
+  await button('סגור', dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  return n;
+};
 const openAdd = async () => { await button(/הוספה$/).tap(); await dialog().waitFor(); };
 // The day's vitamins and minerals, folded under one summary; `vitamin(name)` reads a row's amount (opens it if needed).
 const vitamins = () => page.getByRole('group', { name: 'ויטמינים ומינרלים שצרכת היום' });
@@ -207,11 +223,18 @@ test('a restaurant dish the search doesn\'t know: a question, then its ingredien
   await page.waitForFunction(() => !document.querySelector('[aria-label="מחק: מרק תירס"]'));
 });
 
-test('the meal photo is kept with the meal; a backup carries it; delete, then restore it', async () => {
-  const photo = button('תמונה 1: ארוחת ערב', meal('ארוחת ערב'));
+test('the meal photo is kept with the meal, in its foods\' details; a backup carries it; delete, then restore it', async () => {
+  // the owner: the photo crowded the diary list and sat by no food; it's in each food's details instead
+  assert.equal(await meal('ארוחת ערב').getByRole('button', { name: /^תמונה / }).count(), 0);
+  const photo = button('תמונה 1: ארוחת ערב', dialog());
+  await openEntry('ארוחת ערב', 1);
   await photo.tap();
-  assert.ok(await dialog().getByRole('img', { name: 'הארוחה שצולמה' }).isVisible());
+  const viewer = page.getByRole('dialog', { name: 'תמונה: ארוחת ערב' });
+  assert.ok(await viewer.getByRole('img', { name: 'הארוחה שצולמה' }).isVisible());
+  await button('סגור', viewer).tap();
+  await viewer.waitFor({ state: 'detached' });
   await button('סגור', dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
   // the backup file holds the photo itself
   await button(/הגדרות/).tap();
   const [download] = await Promise.all([page.waitForEvent('download'), button('הורדת גיבוי').tap()]);
@@ -222,22 +245,25 @@ test('the meal photo is kept with the meal; a backup carries it; delete, then re
   assert.ok(Photo[0].jpeg.length > 100);
   // delete it, and restoring the backup brings it back
   await button('יומן').tap();
+  await openEntry('ארוחת ערב');
   await photo.tap();
   // the app asks in its own window, not the browser's; cancel keeps it
-  await button('מחק תמונה', dialog()).tap();
+  await button('מחק תמונה', viewer).tap();
   await button('ביטול', asked('למחוק את התמונה?')).tap();
   await asked('למחוק את התמונה?').waitFor({ state: 'detached' });
   assert.ok(await page.getByRole('img', { name: 'הארוחה שצולמה' }).isVisible());
-  await button('מחק תמונה', dialog()).tap();
+  await button('מחק תמונה', viewer).tap();
   await button('מחק תמונה', asked('למחוק את התמונה?')).tap();
-  await asked('למחוק את התמונה?').waitFor({ state: 'detached' });
+  await viewer.waitFor({ state: 'detached' });
+  assert.equal(await photo.count(), 0); // gone from the food's details too
+  await button('סגור', dialog()).tap();
   await dialog().waitFor({ state: 'detached' });
-  assert.equal(await photo.count(), 0);
   await button(/הגדרות/).tap();
   await page.getByLabel('שחזור מגיבוי').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: backup });
   await Promise.all([page.waitForEvent('load'), button('שחזור', asked(/^השחזור יחליף/)).tap()]);
   await button('יומן').tap();
-  await photo.waitFor();
+  await entries('ארוחת ערב').first().waitFor();
+  assert.equal(await photoCount('ארוחת ערב'), 1);
 });
 
 test('the diary shows them under the right meals, with a total', async () => {
@@ -403,9 +429,25 @@ test('water: a glass at a time on its own line, not under a meal', async () => {
   await button('עוד כוס מים', water).tap();
   await water.getByRole('status').filter({ hasText: /^0\.5 \// }).waitFor();
   assert.equal(await entries('ארוחת צהריים').count(), 0); // logged at lunchtime, but not listed as lunch food
-  await button('פחות כוס מים', water).tap();
-  await water.getByRole('status').filter({ hasText: /^0\.25 \// }).waitFor();
-  await button('פחות כוס מים', water).tap();
+  // water in the quick add is a glass, and says so (the owner's asks: it said "לצהריים", then repeated the last amount)
+  await openAdd(); // her way in: water found by search ("מים ללא פירוט נוסף"), then one tap in the quick add
+  await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('מים');
+  await button(/^מים ללא פירוט נוסף/, dialog()).first().tap();
+  await dialog().getByRole('spinbutton').first().fill('2'); // not a glass's amount, so the quick add can't just repeat it
+  await button('הוסף', dialog()).tap();
+  await button(/^סיום · נוספו 1/, dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  await button('יום קודם').tap(); await button('יום הבא').tap(); // the quick add reloads the month with the water
+  const drunk = await amount(), liters = (s) => Number(s.split(' ')[0]);
+  await button(/^מים ללא פירוט נוסף/, page.getByRole('region', { name: 'הוספה מהירה' })).tap();
+  const toast = page.getByRole('status').filter({ hasText: /^נוספה כוס מים/ });
+  await toast.waitFor();
+  await page.waitForFunction((was) => document.querySelector('[role=group][aria-label="מים"] [role=status]').innerText !== was, drunk);
+  assert.equal(Math.round((liters(await amount()) - liters(drunk)) * 1000), 250); // one glass, 250 ml
+  assert.equal(await entries('ארוחת צהריים').count(), 0);
+  await button('בטל', toast).tap();
+  await water.getByRole('status').filter({ hasText: drunk }).waitFor();
+  while (await button('פחות כוס מים', water).isEnabled()) await button('פחות כוס מים', water).tap();
   await water.getByRole('status').filter({ hasText: /^0 \// }).waitFor();
 });
 
@@ -427,25 +469,29 @@ test('deleting a meal\'s last food takes its photos too (two of them), and undo 
   await button('זהה מזונות', dialog()).tap();
   await button(/^הוסף \(/, dialog()).tap();
   await button(/^סיום/, dialog()).tap();
-  const photo = button('תמונה 1: ארוחת צהריים', meal('ארוחת צהריים'));
-  const second = button('תמונה 2: ארוחת צהריים', meal('ארוחת צהריים'));
-  await second.waitFor();
   const foods = entries('ארוחת צהריים');
-  while (await foods.count() > 1) { await foods.first().tap(); assert.equal(await photo.count(), 1); } // not the last: the photo stays
+  await foods.first().waitFor();
+  assert.equal(await photoCount('ארוחת צהריים'), 2);
+  while (await foods.count() > 1) { await foods.first().tap(); assert.equal(await photoCount('ארוחת צהריים'), 2); } // not the last: the photos stay
   await foods.first().tap();
   await page.getByRole('status').filter({ hasText: 'נמחק עם תמונות הארוחה' }).waitFor();
-  assert.equal(await photo.count(), 0);
   await button('בטל').tap();
-  await second.waitFor();
+  await foods.first().waitFor();
   assert.equal(await foods.count(), 1);
+  assert.equal(await photoCount('ארוחת צהריים'), 2);
   // without undo it's gone for good: still gone after a reload
   await foods.first().tap();
   await page.getByRole('status').filter({ hasText: 'נמחק' }).waitFor({ state: 'detached', timeout: 10_000 });
   await page.reload();
   await button('יום קודם').tap();
   await meal('ארוחת צהריים').getByText('עוד לא נרשם כלום').waitFor();
-  assert.equal(await photo.count(), 0);
   await button('יום הבא').tap();
+  // the list has no food left to show them by, so the backup tells: no lunch photo is kept
+  await button(/הגדרות/).tap();
+  const [download] = await Promise.all([page.waitForEvent('download'), button('הורדת גיבוי').tap()]);
+  const { Photo } = JSON.parse((await readFile(await download.path())).toString());
+  assert.equal(Photo.filter((p) => /\/lunch\./.test(p.path)).length, 0);
+  await button('יומן').tap();
 });
 
 test('moving a meal\'s last food to another meal takes its photo along', async () => {
@@ -455,24 +501,22 @@ test('moving a meal\'s last food to another meal takes its photo along', async (
   await button('זהה מזונות', dialog()).tap();
   await button(/^הוסף \(/, dialog()).tap();
   await button(/^סיום/, dialog()).tap();
-  const atLunch = button('תמונה 1: ארוחת צהריים', meal('ארוחת צהריים'));
-  const atDinner = button('תמונה 1: ארוחת ערב', meal('ארוחת ערב'));
-  await atLunch.waitFor();
   const foods = entries('ארוחת צהריים');
+  await foods.first().waitFor();
+  assert.equal(await photoCount('ארוחת ערב'), 0);
   for (let n = await foods.count(); n > 0; n--) {
-    const name = (await foods.first().getAttribute('aria-label')).replace(/^מחק: /, '');
-    await meal('ארוחת צהריים').getByRole('button', { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) }).first().tap();
+    await openEntry('ארוחת צהריים');
     await mealTab('ערב').tap();
     await button('שמור', dialog()).tap();
     await dialog().waitFor({ state: 'detached' });
-    if (n > 1) assert.equal(await atLunch.count(), 1); // other food is still at lunch: the photo stays
+    if (n > 1) assert.equal(await photoCount('ארוחת צהריים'), 1); // other food is still at lunch: the photo stays
   }
-  await atDinner.waitFor();
-  assert.equal(await atLunch.count(), 0);
+  assert.equal(await photoCount('ארוחת ערב'), 1);
   // and it's really moved: still at dinner after a reload
   await page.reload();
   await button('יום קודם').tap();
-  await atDinner.waitFor();
+  await entries('ארוחת ערב').first().waitFor();
+  assert.equal(await photoCount('ארוחת ערב'), 1);
   await button('יום הבא').tap();
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, MEALS, mealNow, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
+import { GRAMS, MEALS, WATER, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
 import { norm } from './search';
 import { goalsLeft, whatFits, type Goals } from './goals';
 import { FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
@@ -290,7 +290,8 @@ export function QuickAdd({ ctx, date, onAdded, onRemoved }: { ctx: Ctx; date: st
   const [just, setJust] = useState<{ name: string; es: Entry[] } | null>(null);
   const uid = useId();
   const picks = usual.flatMap((r) => {
-    const items = 'm' in r ? r.items : last[r.f.id] ? [pickItem(last[r.f.id])] : [];
+    // water is a glass, like the water line's ＋, whatever amount was logged last
+    const items = 'm' in r ? r.items : isWater({ foodId: r.f.id }) ? [{ ...WATER, foodId: r.f.id, name: r.f.name }] : last[r.f.id] ? [pickItem(last[r.f.id])] : [];
     return items.length ? [{ key: r.key, name: 'm' in r ? r.m.name : r.f.name, saved: 'm' in r, items }] : [];
   }).slice(0, QUICK_SHOWN);
   if (!picks.length) return null;
@@ -322,7 +323,7 @@ export function QuickAdd({ ctx, date, onAdded, onRemoved }: { ctx: Ctx; date: st
           </li>
         ))}
       </ul>
-      {just && <div className="toast" role="status">נוסף ״{head(just.name)}״ ל{MEALS.find((m) => m.key === just.es[0]?.meal)?.short} <button onClick={() => undo(just)}>בטל</button></div>}
+      {just && <div className="toast" role="status">{just.es.every(isWater) ? 'נוספה כוס מים' : <>נוסף ״{head(just.name)}״ ל{placeOf(just.es)}</>} <button onClick={() => undo(just)}>בטל</button></div>}
     </section>
   );
 }
@@ -490,7 +491,8 @@ function Questions({ questions, onDone }: { questions: Question[]; onDone: (answ
   );
 }
 
-export function EntryDialog({ ctx, entry, onClose, onSaved, onDelete }: { ctx: Ctx; entry: Entry; onClose: () => void; onSaved: (e: Entry) => void; onDelete: () => void }) {
+// `photos`: the meal's photos, opened by `onPhoto`.
+export function EntryDialog({ ctx, entry, photos, onPhoto, onClose, onSaved, onDelete }: { ctx: Ctx; entry: Entry; photos: MealPhoto[]; onPhoto: (p: MealPhoto) => void; onClose: () => void; onSaved: (e: Entry) => void; onDelete: () => void }) {
   const [meal, setMeal] = useState(entry.meal as MealKey);
   const real = ctx.foods.find((x) => x.id === entry.foodId);
   const food = useMemo(() => itemFood(ctx.foods, entry as Item), [ctx.foods, entry]);
@@ -501,6 +503,11 @@ export function EntryDialog({ ctx, entry, onClose, onSaved, onDelete }: { ctx: C
   return (
     <Modal title={entry.name} onClose={onClose}>
       <div className="muted small">{amountLabel(entry)}</div>
+      {photos.length > 0 && (
+        <div className="meal-photos">
+          {photos.map((p, i) => <button key={p.path} aria-label={`תמונה ${i + 1}: ${MEALS.find((m) => m.key === p.meal)!.label}`} onClick={() => onPhoto(p)}><img src={p.url} alt="" /></button>)}
+        </div>
+      )}
       <MealSeg meal={meal} onChange={setMeal} />
       <Amount food={food} init={itemInit(entry as Item)} onPick={save} cta="שמור"
         onAddUnit={real ? unitSaver(ctx, real) : undefined} />
