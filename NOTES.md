@@ -2,6 +2,12 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-25: Reports no longer lists each day's foods on screen
+
+**Done:**
+- The owner asked what the food list at the bottom of Reports was: each day's foods by meal, the same as the diary. It's now in the PDF only (where a printed report needs it); on screen Reports ends at the vitamins (and the per-day table and chart for longer ranges). One `.print-only` class replaces `.print-title`.
+- Screen test: no meal headings in Reports on screen, there in print (fails with the list back on screen).
+
 ## 2026-10-25: a new size from the photo's check list too
 
 **Done:**

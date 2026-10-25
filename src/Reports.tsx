@@ -56,7 +56,7 @@ export default function Reports({ ctx, date }: { ctx: Ctx; date: string }) {
       <WeighIn ctx={ctx} />
       {weights.length > 1 && <TrendChart title="משקל" unit="ק״ג" data={weights.map((w) => ({ id: w.id, date: w.date, v: w.kg }))} />}
       {waists.length > 1 && <TrendChart title="מותניים" unit="ס״מ" data={waists} />}
-      <h2 className="print-title">דוח תזונה · {title}</h2>
+      <h2 className="print-only">דוח תזונה · {title}</h2>
       {entries === null ? <div className="muted center">טוען…</div> : !logged.length ? <div className="muted center">אין רישומים בטווח הזה</div> : (
         <>
           <section className="card summary">
@@ -80,8 +80,9 @@ export default function Reports({ ctx, date }: { ctx: Ctx; date: string }) {
               </table>
             </section>
           )}
+          {/* the foods of each day: the diary already shows them, so only the PDF lists them */}
           {logged.map((x) => (
-            <section key={x.d} className="card pad day-detail">
+            <section key={x.d} className="card pad print-only">
               <h3>{fmtDate(x.d)} <small className="muted">· {x.t.kcal} קק״ל</small></h3>
               {MEALS.map((m) => {
                 const es = x.es.filter((e) => e.meal === m.key);
