@@ -37,6 +37,13 @@ after(async () => {
 const button = (name, scope = page) => scope.getByRole('button', { name, exact: typeof name === 'string' });
 const dialog = () => page.getByRole('dialog');
 const asked = (title) => page.getByRole('dialog', { name: title }); // the app's own confirm/prompt, over another window
+// Something logged that day in the last half hour asks before it's added again ("כבר רשמת…"); where a test means to
+// add it anyway, yes, once `done` (what shows when it's added) or the question shows.
+const againIfAsked = async (done) => {
+  const q = asked(/^כבר רשמת/);
+  await q.or(done).first().waitFor();
+  if (await q.count()) await button('הוסף שוב', q).tap();
+};
 // The ＋ window adds to the meal of the time of day, so a test picks the meal by setting the clock (same day).
 const at = (time) => page.clock.setFixedTime(new Date(`2026-10-21T${time}:00`));
 const openFoods = async () => { await button(/הגדרות/).tap(); await button(/המזונות והארוחות שלי/).tap(); };
@@ -405,6 +412,7 @@ test('a usual food: ＋ adds last time\'s amount; its name opens the amount pick
   assert.equal(await qty.inputValue(), last);
   await qty.fill(String(Number(last) * 2));
   await button('הוסף', dialog()).tap();
+  await button('הוסף שוב', asked(/^כבר רשמת ״ענבים״/)).tap(); // logged at lunch a moment ago
   const plus = button(/^הוסף: ענבים/, usual);
   assert.equal(await plus.getAttribute('aria-pressed'), 'true'); // back on the list, marked as added
   assert.equal(await amount(), String(Number(last) * 2)); // showing the amount just added
@@ -456,6 +464,7 @@ test('what fits in what\'s left: today only, the usual things that fit, one tap 
   // one tap adds it at the usual amount; what's left drops by it, and the row stays to take it back
   const first = rows.first();
   await first.tap();
+  await againIfAsked(fits.getByRole('button', { pressed: true }));
   await page.waitForFunction(() => document.querySelector('[aria-pressed="true"]'));
   assert.equal(await first.getAttribute('aria-pressed'), 'true');
   await fits.getByRole('heading', { name: `מה נכנס ב־${left - all[0]} קק״ל שנותרו` }).waitFor();
