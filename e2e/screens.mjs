@@ -312,7 +312,7 @@ test('save a meal, then add it again in one tap', async () => {
   await asked('שמירה כארוחה').getByRole('textbox', { name: 'שם הארוחה' }).fill('ערב קבוע');
   await button('שמור', asked('שמירה כארוחה')).tap();
   await page.getByText('"ערב קבוע" נשמרה').waitFor();
-  // six foods logged once, just now, at breakfast: the newest, but grapes (twice) has been logged more
+  // six foods logged once, just now, at breakfast: the newest (the saved meal heading the list once it's had twice: below)
   await at('08:00');
   await openAdd();
   await button('כתיבה', dialog()).tap();
@@ -323,11 +323,10 @@ test('save a meal, then add it again in one tap', async () => {
   await dialog().waitFor({ state: 'detached' });
   await at('22:00');
   await openAdd();
-  // one list of foods and saved meals, the most logged first, not the newest
+  // one list of foods and saved meals
   const usual = dialog().getByRole('region', { name: 'הרגילים שלך' });
   const rows = usual.getByRole('button', { name: /^הוסף: |\(ארוחה שמורה\)/ }); // a food's ＋, or a saved meal
-  const names = () => rows.evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label') ?? b.textContent));
-  for (let i = 0; !(await names())[0]?.includes('ענבים'); i++) { assert.ok(i < 50, 'grapes never came first'); await page.waitForTimeout(100); } // the month loads after opening
+  await button(/^ערב קבוע \(ארוחה שמורה\)/, usual).waitFor(); // the month loads after opening
   // 10 shown, the rest behind "עוד"; the saved meal is among them, marked as one
   assert.equal(await rows.count(), 10);
   await button(/^עוד \d/, usual).tap();
@@ -363,7 +362,7 @@ test('a usual food: ＋ adds last time\'s amount; its name opens the amount pick
 
 test('the day\'s quick add: one tap adds the usual amount to the meal of the time of day, בטל takes it back', async () => {
   const quick = page.getByRole('region', { name: 'הוספה מהירה' });
-  const first = quick.getByRole('button').first();
+  const first = quick.getByRole('listitem').first().getByRole('button');
   const name = (await first.innerText()).split(/[,\n]/)[0]; // the name's head, as the toast shows it
   const before = await entries('ארוחת צהריים').count();
   await first.tap(); // 13:00: lunch
@@ -384,7 +383,8 @@ test('the quick add is yours to choose: עריכה picks what it offers; nothing
   const chosen = edit.getByRole('button', { pressed: true });
   const auto = await chips.count();
   await button('עריכת הוספה מהירה', quick).tap();
-  // a saved meal counts as one thing: its foods don't count again on their own, so it heads the usual list
+  // the most logged first, not the newest: the saved meal, had twice, over the six breakfast foods; and it counts as one
+  // thing: its foods (grapes twice in it) don't count again on their own, or they'd come first
   await edit.getByRole('button', { name: /^ערב קבוע \(ארוחה שמורה\)/ }).first().waitFor();
   assert.match(await edit.getByRole('button').filter({ hasText: /\d/ }).first().innerText(), /^ערב קבוע/); // a row has its calories
   assert.equal(await chosen.count(), auto); // opens on what it shows now
@@ -402,7 +402,8 @@ test('the quick add is yours to choose: עריכה picks what it offers; nothing
   await button('עריכת הוספה מהירה', quick).tap();
   await chosen.first().tap();
   await button('שמירה', edit).tap();
-  await page.waitForFunction((n) => document.querySelectorAll('[aria-labelledby$="-q"] li').length === n, auto);
+  await edit.waitFor({ state: 'detached' });
+  for (let i = 0; (await chips.count()) !== auto; i++) { assert.ok(i < 50, 'not back to automatic'); await page.waitForTimeout(100); }
 });
 
 test('what fits in what\'s left: today only, the usual things that fit, one tap each', async () => {
