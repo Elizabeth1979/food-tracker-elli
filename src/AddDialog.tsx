@@ -1,9 +1,9 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, MEALS, WATER, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
-import { norm } from './search';
+import { GRAMS, MEALS, WATER, isDish, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
+import { norm, repeatOf } from './search';
 import { goalsLeft, whatFits, type Goals } from './goals';
-import { FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
+import { AiTag, FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, confirmIt, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
 import { FoodForm, labelFood, saveFood } from './Foods';
 import { ReviewList } from './Review';
 import { Icon } from './icons';
@@ -166,7 +166,10 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
   const closest = priced.flatMap((r) => ('f' in r ? [r] : [])).sort((a, b) => a.kcal - b.kcal)[0];
   const day = date === today() ? '' : ` · ${fmtDate(date, { weekday: 'short', day: 'numeric', month: 'short' })}`;
 
+  // Returns false when the user chose not to add it again (the same food logged in the last half hour).
   const add = async (key: string, items: Item[]) => {
+    const again = repeatOf([...month ?? [], ...added].filter((e) => e.date === date), items.filter((i) => !isWater(i)));
+    if (again && !(await confirmIt(`כבר רשמת ״${head(again.name)}״ ${again.min ? `לפני ${again.min} דק׳` : 'הרגע'}`, 'הוסף שוב', 'להוסיף שוב?', false))) return false;
     setBusy(true);
     try {
       ctx.addRecent(items.flatMap((i) => (i.foodId ? [i.foodId] : [])));
@@ -176,6 +179,7 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
     } finally { setBusy(false); }
     if (initial) onClose(); // opened on one food from the מזונות tab
     setSel(null); setWriting(false); setPhotos([]); setDescribe(''); setQ('');
+    return true;
   };
   const readShot = async (file: File) => {
     setErr(''); setLabelShot(file);
@@ -226,9 +230,8 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
         <LabelCheck food={checking} onSave={saveLabel} onEdit={(f) => setCreating(f)} />
       ) : writing ? (
         <>
-          <TextOrPhoto ctx={ctx} files={photos} describe={describe} cta="הוסף" onAdd={(items, shots) => {
-            add(`w:${Date.now()}`, items);
-            shots.forEach((s) => void savePhoto(s, date, meal).then(onPhoto)); // a failure shows in the app's error banner
+          <TextOrPhoto ctx={ctx} files={photos} describe={describe} cta="הוסף" onAdd={async (items, shots) => {
+            if (await add(`w:${Date.now()}`, items)) shots.forEach((s) => void savePhoto(s, date, meal).then(onPhoto)); // a failure shows in the app's error banner
           }} />
         </>
       ) : (
@@ -502,7 +505,7 @@ export function EntryDialog({ ctx, entry, photos, onPhoto, onClose, onSaved, onD
   };
   return (
     <Modal title={entry.name} onClose={onClose}>
-      <div className="muted small">{amountLabel(entry)}</div>
+      <div className="muted small">{isDish(entry) && <><AiTag />מנה שאינה במאגר: הערכים מסכום המרכיבים שנבדקו. </>}{amountLabel(entry)}</div>
       {photos.length > 0 && (
         <div className="meal-photos">
           {photos.map((p, i) => <button key={p.path} aria-label={`תמונה ${i + 1}: ${MEALS.find((m) => m.key === p.meal)!.label}`} onClick={() => onPhoto(p)}><img src={p.url} alt="" /></button>)}

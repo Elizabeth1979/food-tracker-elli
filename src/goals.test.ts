@@ -1,7 +1,7 @@
 // Goals from body measurements. Run: npm test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DAILY_VALUES, DEFAULT_GOALS, MICRO_INFO, goalsLeft, goalsOf, suggestGoals, whatFits, type Body } from './goals.ts';
+import { DAILY_VALUES, DEFAULT_GOALS, MICRO_INFO, goalsLeft, goalsOf, microLevel, suggestGoals, whatFits, type Body } from './goals.ts';
 
 const her: Body = { sex: 'f', age: 45, heightCm: 165, weightKg: 75, activity: 1.375, aim: -0.2, carbsMax: 130 };
 
@@ -53,4 +53,8 @@ test('what fits: only what fits the calories and carbs left; protein first while
 
 test('every vitamin and mineral with a daily value says what it does', () => {
   for (const key of Object.keys(DAILY_VALUES)) assert.ok(MICRO_INFO[key]?.why, key);
+});
+
+test("a period's vitamin average: low under 70% of the goal, ok up to it, good from it", () => {
+  assert.deepEqual([13.9, 14, 19.9, 20, 30].map((v) => microLevel(v, 20)), ['low', 'ok', 'ok', 'good', 'good']);
 });

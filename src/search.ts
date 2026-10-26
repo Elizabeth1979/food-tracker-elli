@@ -231,12 +231,28 @@ export const candidatesFor = (foods: Food[], items: SeenItem[], recent: string[]
   items.map((i) => matchFoods(foods, i.name, recent).slice(0, CANDIDATES));
 export const per100 = (f: Food) => Math.round((f.kcal * 100) / (f.servingG || 100));
 // What the AI picked, as review rows. An id that wasn't offered is ignored; no pick at all falls back to the search's.
+// Amount 0: an answer said it wasn't there ("שמן? בלי"), so the row goes.
 export function pickedParsed(items: SeenItem[], picks: (Picked | undefined)[], cands: Food[][]): Parsed[] {
   return items.flatMap((i, k) => {
     const p = picks[k];
     if (!p) return [seenParsed(i)];
+    if (!(p.qty > 0)) return [];
     if (p.id && cands[k].some((f) => f.id === p.id)) return [{ ...seenParsed({ ...i, qty: p.qty, unit: p.unit, grams: p.grams }), foodId: p.id }];
     if (p.parts?.length) return p.parts.map((x) => seenParsed(x, i.name));
     return [seenParsed({ ...i, qty: p.qty, unit: p.unit, grams: p.grams })];
   });
+}
+
+// ---------- logging the same thing twice ----------
+// A photo taken again, or a meal logged from two places: the same food logged that day in the last half hour, to ask
+// before adding it again. Matched by food, or by name for a dish (no food behind it). `created_at` is set by the database.
+export const REPEAT_MIN = 30;
+type Logged = { foodId?: string | null; name: string; created_at?: string | null };
+export function repeatOf(logged: Logged[], items: { foodId?: string | null; name: string }[], now = Date.now()) {
+  const same = (a: Logged, b: { foodId?: string | null; name: string }) => (a.foodId || b.foodId ? a.foodId === b.foodId : norm(a.name) === norm(b.name));
+  const hits = logged.flatMap((e) => {
+    const min = e.created_at ? (now - Date.parse(e.created_at)) / 60000 : Infinity;
+    return min <= REPEAT_MIN && items.some((i) => same(e, i)) ? [{ name: e.name, min: Math.max(0, Math.round(min)) }] : [];
+  });
+  return hits.sort((a, b) => a.min - b.min)[0] ?? null;
 }

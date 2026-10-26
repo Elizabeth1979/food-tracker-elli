@@ -11,8 +11,9 @@ type Nutrients = { kcal: number; carbs: number; fat: number; protein: number; ex
 
 // Nutrients are per `servingG` grams. units: [{ n: name, g: grams }] (array or JSON string)
 export type Food = Nutrients & { id: string; name: string; nameEn?: string | null; source?: string | null; hidden?: boolean | null; servingG: number; units?: unknown };
-// One logged item. Nutrients are totals for the logged amount (snapshot). date: YYYY-MM-DD local
-export type Entry = Nutrients & { id: string; date: string; meal: MealKey; foodId?: string | null; name: string; grams: number; qty?: number | null; unit?: string | null };
+// One logged item. Nutrients are totals for the logged amount (snapshot). date: YYYY-MM-DD local.
+// created_at: when it was logged, set by the database (none yet while it waits to be sent).
+export type Entry = Nutrients & { id: string; date: string; meal: MealKey; foodId?: string | null; name: string; grams: number; qty?: number | null; unit?: string | null; created_at?: string | null };
 // items: Item[] (older backups hold a JSON string)
 export type SavedMeal = { id: string; name: string; items: unknown };
 // One row per user; id is the user's id.

@@ -20,7 +20,7 @@ const clean = (r: object): Row => Object.fromEntries(Object.entries(r).map(([k, 
 
 function model<T>(t: TableName) {
   const create = async (input: object) => {
-    const row = { ...clean(input), id: (input as Row).id ?? (t === 'Profile' ? 'test-user' : crypto.randomUUID()) };
+    const row = { created_at: new Date().toISOString(), ...clean(input), id: (input as Row).id ?? (t === 'Profile' ? 'test-user' : crypto.randomUUID()) };
     db[t].push(row); save();
     return { data: row as unknown as T };
   };
@@ -51,7 +51,9 @@ export const hasPending = () => false;
 // A signed-in "test user", and a photo reader that answers with a fixed sample instead of calling Claude:
 // a meal, or for `mode: 'label'` a multivitamin's label (per tablet, with vitamins beyond the four columns in `extra`).
 // A note or description that mentions soup gets a corn soup with a question; picking it (`mode: 'pick'`) finds no
-// database food for it, so it comes back as ingredients. Every other item gets the search's first candidate.
+// database food for it, so it comes back as ingredients. "סלט עוף" asks which salad and comes back as that one's
+// ingredients; "סלט ירקות" comes with a guessed oil and asks how much ("בלי" drops it). Every other item gets the
+// search's first candidate.
 const session = { user: { id: 'test-user', email: 'מצב בדיקה' } };
 // Meal photos live in localStorage too (path → data URL), so they outlast a restore's reload. `list` gives one
 // level down, files or folders, like Storage.
@@ -86,7 +88,7 @@ export const supabase = {
   },
 };
 
-type Demo = { mode?: string; note?: string; items?: { name: string; qty: number; unit: string; grams?: number; candidates: { id: string }[] }[] };
+type Demo = { mode?: string; note?: string; items?: { name: string; qty: number; unit: string; grams?: number; answers?: string[]; candidates: { id: string }[] }[] };
 function demoAnswer({ mode, note = '', items = [] }: Demo) {
   if (mode === 'label')
     return {
@@ -98,11 +100,19 @@ function demoAnswer({ mode, note = '', items = [] }: Demo) {
     };
   if (mode === 'pick')
     return {
-      items: items.map((i) => (i.name === SOUP.name
-        ? { id: null, qty: i.qty, unit: i.unit, grams: i.grams, parts: [{ name: 'תירס גרעינים', qty: 120, unit: 'גרם', grams: 120 }, { name: 'שמנת מתוקה', qty: 3, unit: 'כף', grams: 45 }, { name: 'סוכר', qty: 1, unit: 'כפית', grams: 5 }] }
-        : { id: i.candidates[0]?.id ?? null, qty: i.qty, unit: i.unit, grams: i.grams, parts: [] })),
+      items: items.map((i) => {
+        const said = (i.answers ?? []).join(' ');
+        const dish = (parts: { name: string; qty: number; unit: string; grams: number }[]) => ({ id: null, qty: i.qty, unit: i.unit, grams: i.grams, parts });
+        if (i.name === SOUP.name) return dish([{ name: 'תירס גרעינים', qty: 120, unit: 'גרם', grams: 120 }, { name: 'שמנת מתוקה', qty: 3, unit: 'כף', grams: 45 }, { name: 'סוכר', qty: 1, unit: 'כפית', grams: 5 }]);
+        if (i.name === 'סלט עוף') return dish(said.includes('ירוק')
+          ? [{ name: 'חסה', qty: 60, unit: 'גרם', grams: 60 }, { name: 'חזה עוף', qty: 100, unit: 'גרם', grams: 100 }, { name: 'שמן זית', qty: 1, unit: 'כף', grams: 10 }]
+          : [{ name: 'חזה עוף', qty: 100, unit: 'גרם', grams: 100 }, { name: 'מיונז', qty: 2, unit: 'כף', grams: 30 }]);
+        return { id: i.candidates[0]?.id ?? null, qty: said.includes('בלי') ? 0 : i.qty, unit: i.unit, grams: i.grams, parts: [] };
+      }),
     };
   if (note.includes('מרק')) return { items: [SOUP], questions: [{ item: 0, text: 'איך היה המרק?', options: ['סמיך ושמנתי', 'צלול'] }] };
+  if (note.includes('סלט עוף')) return { items: [{ name: 'סלט עוף', qty: 1, unit: 'מנה', grams: 200 }], questions: [{ item: 0, text: 'איזה סלט עוף?', options: ['סלט עוף עם מיונז', 'סלט ירוק עם עוף'] }] };
+  if (note.includes('סלט ירקות')) return { items: [{ name: 'סלט ירקות', qty: 2, unit: 'כוס', grams: 300 }, { name: 'שמן זית', qty: 1, unit: 'כף', grams: 10, hidden: true }], questions: [{ item: 1, text: 'שמן או רוטב על הסלט?', options: ['בלי', 'כפית', 'כף'] }] };
   return { items: [{ name: 'יוגורט', qty: 1, unit: 'גביע', grams: 150 }, { name: 'ענבים', qty: 10, unit: 'יחידה', grams: 60 }, { name: 'חמאת בוטנים', qty: 1, unit: 'כפית', grams: 10 }, { name: 'גרנולה', qty: 2, unit: 'כף', grams: 20 }, { name: 'שמן זית', qty: 1, unit: 'כף', grams: 10, hidden: true }], questions: [] };
 }
 const SOUP = { name: 'מרק תירס', qty: 1, unit: 'כוס', grams: 300, about: 'מתוק, בסגנון מסעדת סושי' };

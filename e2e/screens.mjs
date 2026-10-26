@@ -223,6 +223,60 @@ test('a restaurant dish the search doesn\'t know: a question, then its ingredien
   await page.waitForFunction(() => !document.querySelector('[aria-label="מחק: מרק תירס"]'));
 });
 
+test('a name that means two dishes asks which, and the answer decides it; a typed salad asks about its oil', async () => {
+  await at('22:00');
+  await openAdd();
+  const smart = async (q) => {
+    await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill(q);
+    await button(`זיהוי חכם: ״${q}״`, dialog()).tap();
+  };
+  await smart('סלט עוף');
+  const which = dialog().getByRole('group', { name: 'איזה סלט עוף?' });
+  await button('סלט ירוק עם עוף', which).tap();
+  await button('המשך', dialog()).tap();
+  // the green one's ingredients, not the deli one's (chicken and mayo), marked as the AI's estimate
+  await dialog().getByText(/הערכת AI.*״סלט עוף״ לא נמצא במאגר/).waitFor();
+  const foods = dialog().getByRole('combobox', { name: 'מזון' });
+  assert.match(await foods.first().evaluate((s) => s.selectedOptions[0].text), /^חסה/);
+  await button(/^הוסף \(1\)/, dialog()).tap();
+  await dialog().getByRole('searchbox', { name: 'חיפוש' }).waitFor(); // back on the list, for the next one
+  await smart('סלט ירקות');
+  const oil = dialog().getByRole('group', { name: 'שמן או רוטב על הסלט?' });
+  await button('בלי', oil).tap();
+  await button('המשך', dialog()).tap();
+  await button(/^הוסף \(1\)/, dialog()).waitFor(); // the guessed oil is gone: "בלי"
+  assert.equal(await foods.count(), 1);
+  assert.doesNotMatch(await foods.first().evaluate((s) => s.selectedOptions[0].text), /^שמן/);
+  await button(/^הוסף \(1\)/, dialog()).tap();
+  await button(/^סיום/, dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  await at('13:00');
+  assert.match(await meal('נשנושים ואחר').innerText(), /סלט עוף\s*הערכת AI/); // the diary says so too
+  for (let n = await entries('נשנושים ואחר').count(); n > 0; n--) { // gone again, so the later tests' days are as before
+    await entries('נשנושים ואחר').first().tap();
+    await page.waitForFunction((n) => document.querySelectorAll('[aria-label="נשנושים ואחר"] [aria-label^="מחק: "]').length === n - 1, n);
+  }
+});
+
+test('the same food again within half an hour asks first; no keeps it out, yes adds it', async () => {
+  const before = await entries('ארוחת צהריים').count();
+  await openAdd();
+  await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('ענבים'); // logged at lunch, a moment ago
+  await button(/^ענבים/, dialog()).first().tap();
+  await button('הוסף', dialog()).tap();
+  const again = asked(/^כבר רשמת ״ענבים״ הרגע/);
+  await again.getByText('להוסיף שוב?').waitFor();
+  await button('ביטול', again).tap();
+  await again.waitFor({ state: 'detached' });
+  await button('הוסף', dialog()).tap(); // still on the amount: change your mind
+  await button('הוסף שוב', asked(/^כבר רשמת/)).tap();
+  await button(/^סיום · נוספו 1/, dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  assert.equal(await entries('ארוחת צהריים').count(), before + 1);
+  await button(/^מחק: ענבים/, meal('ארוחת צהריים')).last().tap();
+  await page.waitForFunction((n) => document.querySelectorAll('[aria-label="ארוחת צהריים"] [aria-label^="מחק: "]').length === n, before);
+});
+
 test('the meal photo is kept with the meal, in its foods\' details; a backup carries it; delete, then restore it', async () => {
   // the owner: the photo crowded the diary list and sat by no food; it's in each food's details instead
   assert.equal(await meal('ארוחת ערב').getByRole('button', { name: /^תמונה / }).count(), 0);
@@ -533,6 +587,34 @@ test('the phone back button closes a window, and returns from the reports tab to
   await page.emulateMedia({ media: 'screen' });
   await page.goBack();
   await button(/הוספה$/).waitFor();
+});
+
+test('reports over days say how each vitamin\'s average stands; one logged day doesn\'t', async () => {
+  const card = page.getByRole('heading', { name: /^ויטמינים ומינרלים/ }).locator('..');
+  const levels = async () => /(נמוך|סביר)\s/.test(await card.innerText());
+  await button(/דוחות/).tap();
+  await button('שבוע').tap();
+  await card.waitFor();
+  assert.equal(await levels(), false); // only today is logged: one day is too noisy to judge
+  // a second logged day, yesterday
+  await button('יומן').tap();
+  await button('יום קודם').tap();
+  await openAdd();
+  await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('ענבים');
+  await button(/^ענבים/, dialog()).first().tap();
+  await button('הוסף', dialog()).tap();
+  await button(/^סיום · נוספו 1/, dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  await button(/דוחות/).tap();
+  await button('שבוע').tap();
+  await card.getByText('בממוצע: נמוך = פחות מ־70% מהיעד, סביר = 70% ומעלה.').waitFor();
+  assert.ok(await levels());
+  await button('יום').tap();
+  assert.equal(await levels(), false);
+  await button('יומן').tap(); // yesterday empty again, as the other tests expect
+  await button(/^מחק: ענבים/).tap();
+  await page.waitForFunction(() => !document.querySelector('[aria-label^="מחק: "]'));
+  await button('יום הבא').tap();
 });
 
 test('the foods page, from Settings: search first, then my foods and saved meals; the database only through search', async () => {
