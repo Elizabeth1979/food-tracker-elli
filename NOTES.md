@@ -5,9 +5,9 @@ What was done in each work session and what's next. Newest first.
 ## 2026-10-26: a guessed fat is offered, not added
 
 **Done:**
-- The owner typed bread with yellow cheese and the list already held "חמאה, 1 כפית" (37 kcal) she never had. A fat or sauce the AI guesses (`hidden`) is now only offered in the review list: "ניחוש: אולי היה גם …" with a "הוסף: …" button; it isn't counted until tapped (`offer` in `Review.tsx`). Answering the AI's question about it ("כפית") counts as yes; "בלי" drops it as before (`matchMeal`).
+- The owner typed bread with yellow cheese and the list already held "חמאה, 1 כפית" (37 kcal) she never had. A fat or sauce the AI guesses (`hidden`) is now only offered in the review list: "ניחוש: אולי היה גם …" with a "הוסף: …" button; it isn't counted until tapped (`offer` in `Review.tsx`). Answering the AI's question about it ("כפית") counts as yes; "בלי" drops it as before (`matchMealWith`).
 - Trade-off, said to her: the research behind the guess (photo apps miss ~30 g fat a meal) is why it was on by default; the guide article now says the choice is hers and not to skip it without thinking.
-- Screen test: the guessed oil isn't counted until "הוסף: שמן זית, 1 כף".
+- Tests: screen test (the guessed oil isn't counted until "הוסף: שמן זית, 1 כף"); `search.test.ts` (an answer confirms the guess).
 
 ## 2026-10-26: star fruit ("כוכבית") is found
 
@@ -15,7 +15,10 @@ What was done in each work session and what's next. Newest first.
 - The owner photographed star fruit: the AI named it "כוכבית (קרמבולה)", the search looked for "כוכבית" only and found nothing, so the AI "broke it into ingredients", itself, and the row stayed unmatched. The database has it ("קרמבולה, טרי", 31 kcal/100 g). Now "כוכבית" means "קרמבולה" (`SAME`), and a name with another in parentheses tries each name (`matchFoods`), so any such pair finds the one the database knows ("זוקיני (קישוא)"). Test in `search.test.ts`; case 19 in `docs/meal-photo-cases.md`.
 - Her first try named it bread: one photo, so not yet a reason to change model.
 
-**Next:** compare models (Haiku, Sonnet, Opus) on 10–15 of her photos with known answers; needs her OK (API cost) and the key in the session.
+- Then: a piece count of a food with no piece size ("3 יחידה" of star fruit, which the database lists by the cup) was logged as 3 grams. Now the photo's weight guess stands (`unitFor`). Test in `search.test.ts`.
+- `scripts/compare-models.ts`: runs the `meal-photo` function's own code with Haiku, Sonnet and Opus on photos with known answers, then the app's matching (`matchMealWith`, moved from `lib.ts` to `search.ts` for it), and reports foods, calories, pass/fail, time and cost per photo. Its first (mock) run found the 3-grams bug.
+
+**Next:** she approved the cost and is sending photos. Running it needs `ANTHROPIC_API_KEY` in the cloud environment's settings; then fill the Results table in `docs/meal-photo-cases.md` and pick the model.
 
 ## 2026-10-26: the food-estimate spec, built on the database
 

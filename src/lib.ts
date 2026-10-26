@@ -1,9 +1,9 @@
 import type { IconName } from './icons';
 import { client, hasPending, listEntries, supabase, syncPending, type Food, type SavedMeal, type Weight } from './db';
-import { GRAMS, candidatesFor, json, per100, pickedParsed, seenParsed, unitsOf, type Parsed, type Picked, type Question, type SeenItem, type Unit } from './search';
+import { GRAMS, json, matchMealWith, unitsOf, type AskPick, type Picked, type Seen, type Unit } from './search';
 
 export { client, hasPending, syncPending };
-export { GRAMS, json, unitsOf, searchFoods, matchFoods, parseLine, splitAnd, unitFor, isFFQ, kcalOff, sameFood, type Unit, type Parsed, type Question } from './search';
+export { GRAMS, json, unitsOf, searchFoods, matchFoods, parseLine, splitAnd, unitFor, isFFQ, kcalOff, sameFood, type Unit, type Parsed, type Question, type Seen } from './search';
 export type { Food, Entry, SavedMeal, Profile, BodyInfo, Weight } from './db';
 export type MealKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 export const MICROS = [
@@ -181,7 +181,6 @@ async function shrunk(file: File, max: number) {
 const shrink = async (file: File, max = 1024) => (await shrunk(file, max)).toDataURL('image/jpeg', 0.8).split(',')[1];
 // Several photos of one meal (another angle, the drink) are read together, so a food two photos show counts once.
 export const MAX_PHOTOS = 4; // the meal-photo function's limit too
-export type Seen = { items: SeenItem[]; questions: Question[] };
 // What's in a meal: from its photos (with the user's note), or with none from a description alone ("מרק תירס ממסעדת סושי").
 export async function readMeal(files: File[], note: string): Promise<Seen> {
   const images = await Promise.all(files.map((f) => shrink(f)));
@@ -189,32 +188,14 @@ export async function readMeal(files: File[], note: string): Promise<Seen> {
   if (error || !data?.items) throw new Error(data?.error ?? (files.length ? 'זיהוי התמונה לא זמין כרגע. אפשר לכתוב את הארוחה במקום.' : 'הזיהוי לא זמין כרגע. אפשר לבדוק את הרשימה בלעדיו.'));
   return { items: data.items, questions: data.questions ?? [] };
 }
-// Then the AI matches each item to one of its closest database foods (with the note and the answers given), or breaks
-// a dish the database lacks into ingredients, which are matched the same way in turn.
-export async function matchMeal(foods: Food[], recent: string[], seen: Seen, note: string, answers: (string | undefined)[]): Promise<Parsed[]> {
-  const asked = seen.items.map((_, k) => seen.questions.flatMap((q, n) => (q.item === k && answers[n] ? [`${q.text} ${answers[n]}`] : [])));
-  // A guessed fat the user answered about isn't a guess any more ("בלי" drops it in pickedParsed)
-  const items = seen.items.map((i, k) => (asked[k].length ? { ...i, hidden: false } : i));
-  const first = await pickFoods(foods, recent, items, note, asked, true);
-  const parts = first.filter((p) => p.dish);
-  if (!parts.length) return first;
-  const more = await pickFoods(foods, recent, parts.map((p) => ({ name: p.query, qty: p.qty ?? 1, unit: p.unit ?? GRAMS, grams: p.grams })), note, parts.map((p) => [`מרכיב של ${p.dish}`]), false);
-  let n = 0;
-  return first.map((p) => (p.dish ? { ...more[n++], dish: p.dish } : p));
-}
-// One round of picking. If it fails, the search's own matches stand.
-async function pickFoods(foods: Food[], recent: string[], seen: SeenItem[], note: string, answers: string[][], parts: boolean): Promise<Parsed[]> {
-  const cands = candidatesFor(foods, seen, recent);
-  const items = seen.map((i, k) => ({ ...i, answers: answers[k], candidates: cands[k].map((f) => ({ id: f.id, name: f.name, kcal: per100(f) })) }));
-  try {
-    const { data, error } = await supabase.functions.invoke<{ items?: Picked[] }>('meal-photo', { body: { mode: 'pick', note, items } });
-    if (error || !data?.items) throw error ?? new Error('no picks');
-    return pickedParsed(seen, parts ? data.items : data.items.map((p) => ({ ...p, parts: [] })), cands);
-  } catch (e) {
-    console.error(e);
-    return seen.map((i) => seenParsed(i));
-  }
-}
+// Then the AI matches each item to one of its closest database foods (see matchMealWith in search.ts).
+const askPick: AskPick = async (body) => {
+  const { data, error } = await supabase.functions.invoke<{ items?: Picked[] }>('meal-photo', { body: { mode: 'pick', ...body } });
+  if (error || !data?.items) throw error ?? new Error('no picks');
+  return data.items;
+};
+export const matchMeal = (foods: Food[], recent: string[], seen: Seen, note: string, answers: (string | undefined)[]) =>
+  matchMealWith(askPick, foods, recent, seen, note, answers);
 // Reads a nutrition table (טבלת ערכים תזונתיים) into per-100 g values for the new-food form. The one exception to
 // "calories come from the database": a packaged product the database lacks, checked by the user before saving.
 // A supplement label that gives no weight comes back per piece instead (basisG 1, unit "טבליה" = 1 g).

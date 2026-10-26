@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Food } from './db';
-import { GRAMS, candidatesFor, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, repeatOf, sameFood, searchFoods, splitAnd, unitFor } from './search.ts';
+import { GRAMS, candidatesFor, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, matchMealWith, repeatOf, sameFood, searchFoods, splitAnd, unitFor } from './search.ts';
 
 const moh: Food[] = JSON.parse(readFileSync(new URL('../public/foods/moh.json', import.meta.url), 'utf8'));
 const first = (q: string, foods = moh, recent: string[] = []) => searchFoods(foods, q, recent)[0]?.name ?? '';
@@ -113,6 +113,9 @@ test('unitFor: a photo\'s weight guess overrules a unit far off it', () => {
   assert.equal(unitFor(lettuce, { qty: 4, unit: 'יחידה', grams: 40 }).unit.n, 'עלה'); // 4 leaves, not 4 heads of 648 g
   assert.deepEqual(unitFor(potato, { qty: 6, unit: 'יחידה', grams: 300 }), { qty: 300, unit: { n: GRAMS, g: 1 } }); // small ones: no unit fits
   assert.equal(unitFor(schnitzel, { qty: 2, unit: 'יחידה', grams: 160 }).unit.n, 'יחידה קטנה'); // another size that fits
+  // star fruit has no piece size: "3 יחידה" was logged as 3 g; the photo's 120 g stands instead
+  const star = moh.find((f) => f.name === 'קרמבולה, טרי')!;
+  assert.deepEqual(unitFor(star, { qty: 3, unit: 'יחידה', grams: 120 }), { qty: 120, unit: { n: GRAMS, g: 1 } });
   assert.equal(unitFor(schnitzel, { qty: 2, unit: 'יחידה', grams: 300 }).unit.n, 'יחידה בינונית'); // close enough: kept
   // the owner's leftover rice came back "3 כף" but 120 g: photos overestimate, so the smaller amount stays
   assert.deepEqual(unitFor(byId('moh-2721'), { qty: 3, unit: 'כף', grams: 120 }), { qty: 3, unit: { n: 'כף', g: 11 } });
@@ -201,6 +204,16 @@ test('the AI\'s picks: an offered food with its amount, a dish it lacks as ingre
     ['ענבים', undefined, undefined, 10], // an id that wasn't offered is ignored
     ['לחם', undefined, undefined, 1], // no pick: the search's match
   ]);
+});
+
+test('a guessed fat stays a guess (offered, not added) until an answer says how much', async () => {
+  const butter = { name: 'חמאה', qty: 1, unit: 'כפית', grams: 5, hidden: true };
+  const seen = { items: [{ name: 'לחם', qty: 1, unit: 'פרוסה', grams: 30 }, butter], questions: [{ item: 1, text: 'חמאה על הלחם?', options: ['בלי', 'כפית'] }] };
+  type Sent = { qty: number; unit: string; grams: number; candidates: { id: string }[] };
+  const keep = async (b: { items: unknown[] }) => (b.items as Sent[]).map((i) => ({ id: i.candidates[0].id, qty: i.qty, unit: i.unit, grams: i.grams }));
+  const hidden = async (answers: (string | undefined)[]) => (await matchMealWith(keep, moh, [], seen, '', answers)).map((p) => !!p.hidden);
+  assert.deepEqual(await hidden([]), [false, true]); // not answered: only offered
+  assert.deepEqual(await hidden(['כפית']), [false, false]); // "כפית": she said so, it counts
 });
 
 test('an answer of "none" drops the item it was about', () => {
