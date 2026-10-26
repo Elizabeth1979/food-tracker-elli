@@ -144,6 +144,13 @@ test('a photo\'s potato: boiled is plain boiled, mashed is פירה, an unknown 
   assert.match(matchFoods(moh, 'תפוח אדמה מבושל בתנור', [])[0].name, /^תפוחי אדמה/);
 });
 
+test('star fruit: "כוכבית" and a photo\'s "כוכבית (קרמבולה)" find the carambola', () => {
+  // the owner's photo named it "כוכבית (קרמבולה)": nothing matched, so the AI "broke it into ingredients", itself
+  assert.match(first('כוכבית'), /^קרמבולה, טרי/);
+  assert.match(matchFoods(moh, 'כוכבית (קרמבולה)', [])[0].name, /^קרמבולה, טרי/);
+  assert.match(matchFoods(moh, 'זוקיני (קישוא)', [])[0].name, /^קישואים/); // any such pair: the name the database knows
+});
+
 test('staples find the plain everyday version', () => {
   assert.match(first('פיתה'), /^פיתה, פיתה ביס/); // not toasted ("קלויה") or a brand's
   assert.match(first('פיתות'), /^פיתה, פיתה ביס/);

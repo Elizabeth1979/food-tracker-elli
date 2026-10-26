@@ -2,6 +2,14 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-26: star fruit ("כוכבית") is found
+
+**Done:**
+- The owner photographed star fruit: the AI named it "כוכבית (קרמבולה)", the search looked for "כוכבית" only and found nothing, so the AI "broke it into ingredients", itself, and the row stayed unmatched. The database has it ("קרמבולה, טרי", 31 kcal/100 g). Now "כוכבית" means "קרמבולה" (`SAME`), and a name with another in parentheses tries each name (`matchFoods`), so any such pair finds the one the database knows ("זוקיני (קישוא)"). Test in `search.test.ts`; case 19 in `docs/meal-photo-cases.md`.
+- Her first try named it bread: one photo, so not yet a reason to change model.
+
+**Next:** compare models (Haiku, Sonnet, Opus) on 10–15 of her photos with known answers; needs her OK (API cost) and the key in the session.
+
 ## 2026-10-26: the food-estimate spec, built on the database
 
 **Done:**

@@ -33,6 +33,7 @@ Past bugs, kept as cases so they don't come back:
 | 16 | Typed: "3 כפות אורז מבושל" | cooked rice (~130 kcal/100 g), 3 כף, about 45–60 g |
 | 17 | Photo of a salad with 4 lettuce leaves | lettuce in עלה, about 4 |
 | 18 | Typed as dictated: "שתי כפות של עגבנייה ומלפפון" | tomato 2 כף, cucumber |
+| 19 | Photo of star fruit slices on a plate, no note | carambola ("קרמבולה, טרי"), not bread and not "broken into ingredients" |
 
 ## Results
 
