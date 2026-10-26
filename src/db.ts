@@ -18,7 +18,7 @@ export type SavedMeal = { id: string; name: string; items: unknown };
 // One row per user; id is the user's id.
 // body: what the goals are worked out from (weight comes from the weight log).
 export type BodyInfo = { sex: 'f' | 'm'; birthYear: number; heightCm: number; activity: number; aim: number; carbsMax?: number };
-export type Profile = { id: string; kcal?: number | null; carbs?: number | null; fat?: number | null; protein?: number | null; recent?: string[] | null; body?: BodyInfo | null };
+export type Profile = { id: string; kcal?: number | null; carbs?: number | null; fat?: number | null; protein?: number | null; recent?: string[] | null; body?: BodyInfo | null; quick?: string[] | null };
 // One weigh-in; one per day (a second one that day replaces it). date: YYYY-MM-DD local; waist in cm, optional
 export type Weight = { id: string; date: string; kg: number; waist?: number | null };
 
@@ -41,7 +41,7 @@ const COLS: Record<TableName, string[]> = {
   Food: ['id', 'name', 'nameEn', 'source', 'hidden', 'servingG', 'units', ...NUTS],
   Entry: ['id', 'date', 'meal', 'foodId', 'name', 'grams', 'qty', 'unit', ...NUTS],
   SavedMeal: ['id', 'name', 'items'],
-  Profile: ['id', 'kcal', 'carbs', 'fat', 'protein', 'recent', 'body'],
+  Profile: ['id', 'kcal', 'carbs', 'fat', 'protein', 'recent', 'body', 'quick'],
   Weight: ['id', 'date', 'kg', 'waist'],
 };
 const JSON_COLS = new Set(['units', 'items', 'body', 'extra']);

@@ -117,14 +117,15 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
           <Ring value={tot.kcal} goal={goal} size={140} center={<><b>{goal ? Math.abs(Math.round(goal - tot.kcal)) : tot.kcal}</b><small>{goal ? (goal - tot.kcal >= 0 ? 'נותרו' : 'חריגה') : 'קלוריות'}</small></>} />
           <button className="btn primary" onClick={() => setAdding(mealNow())}><Icon name="plus" />הוספה</button>
         </div>
-        {date === today() && <QuickAdd key={quick} ctx={ctx} date={date} onAdded={added} onRemoved={(es) => setEntries((cur) => cur!.filter((x) => !es.some((e) => e.id === x.id)))} />}
-        {/* Only today, and only while there's room left: "what can I still eat?" from the usual things */}
-        {date === today() && entries && left.kcal > 0 && <button className="link start" onClick={() => { setFitting(left); setAdding(mealNow()); }}><Icon name="apple" />מה נכנס ב־{Math.round(left.kcal)} קק״ל?</button>}
+        {/* The day at a glance first (the owner's ask): macros and water under the ring, then the quick ways to add */}
         <div>
           <div className="kcal-line"><span>נצרכו</span><b>{tot.kcal}</b><span className="muted">מתוך {goal} קק״ל</span></div>
           <DayGoals n={tot} goals={goals} />
         </div>
         <WaterLine ml={waters.reduce((t, e) => t + e.grams, 0)} onAdd={drink} onRemove={waters.length ? () => remove(waters.at(-1)!) : undefined} />
+        {date === today() && <QuickAdd key={quick} ctx={ctx} date={date} onAdded={added} onRemoved={(es) => setEntries((cur) => cur!.filter((x) => !es.some((e) => e.id === x.id)))} />}
+        {/* Only today, and only while there's room left: "what can I still eat?" from the usual things */}
+        {date === today() && entries && left.kcal > 0 && <button className="link start" onClick={() => { setFitting(left); setAdding(mealNow()); }}><Icon name="apple" />מה נכנס ב־{Math.round(left.kcal)} קק״ל?</button>}
         {/* The day's vitamins and minerals, from food and supplements, folded: a row each would crowd the summary */}
         <details aria-label="ויטמינים ומינרלים שצרכת היום">
           <summary><Icon name="chevron-down" />ויטמינים ומינרלים שצרכת היום</summary>
