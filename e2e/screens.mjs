@@ -613,6 +613,7 @@ test('reports over days say how each vitamin\'s average stands; one day doesn\'t
   await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('ענבים');
   await button(/^ענבים/, dialog()).first().tap();
   await button('הוסף', dialog()).tap();
+  await againIfAsked(button(/^סיום · נוספו 1/, dialog())); // the photo meal there has grapes
   await button(/^סיום · נוספו 1/, dialog()).tap();
   await dialog().waitFor({ state: 'detached' });
   await button(/דוחות/).tap();
