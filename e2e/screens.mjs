@@ -377,6 +377,34 @@ test('the day\'s quick add: one tap adds the usual amount to the meal of the tim
   await button('יום הבא').tap();
 });
 
+test('the quick add is yours to choose: עריכה picks what it offers; nothing picked goes back to the usual ones', async () => {
+  const quick = page.getByRole('region', { name: 'הוספה מהירה' });
+  const chips = quick.getByRole('listitem');
+  const edit = page.getByRole('dialog', { name: 'עריכת הוספה מהירה' });
+  const chosen = edit.getByRole('button', { pressed: true });
+  const auto = await chips.count();
+  await button('עריכת הוספה מהירה', quick).tap();
+  // a saved meal counts as one thing: its foods don't count again on their own, so it heads the usual list
+  await edit.getByRole('button', { name: /^ערב קבוע \(ארוחה שמורה\)/ }).first().waitFor();
+  assert.match(await edit.getByRole('button').filter({ hasText: /\d/ }).first().innerText(), /^ערב קבוע/); // a row has its calories
+  assert.equal(await chosen.count(), auto); // opens on what it shows now
+  while (await chosen.count()) await chosen.first().tap();
+  await edit.getByRole('status').filter({ hasText: 'לא נבחר כלום' }).waitFor();
+  await button(/^ערב קבוע \(ארוחה שמורה\)/, edit).tap();
+  await button('שמירה', edit).tap();
+  await edit.waitFor({ state: 'detached' });
+  assert.equal(await chips.count(), 1);
+  assert.match(await chips.innerText(), /^ערב קבוע/);
+  await button('יום קודם').tap(); await button('יום הבא').tap(); // kept
+  await chips.first().waitFor();
+  assert.equal(await chips.count(), 1);
+  // nothing picked: the usual ones again
+  await button('עריכת הוספה מהירה', quick).tap();
+  await chosen.first().tap();
+  await button('שמירה', edit).tap();
+  await page.waitForFunction((n) => document.querySelectorAll('[aria-labelledby$="-q"] li').length === n, auto);
+});
+
 test('what fits in what\'s left: today only, the usual things that fit, one tap each', async () => {
   const ask = button(/^מה נכנס ב־\d+ קק״ל\?$/);
   // over the goal (2022 of 2000): nothing to ask; taking out snack foods (the saved meal again) until it asks
@@ -429,24 +457,24 @@ test('water: a glass at a time on its own line, not under a meal', async () => {
   await button('עוד כוס מים', water).tap();
   await water.getByRole('status').filter({ hasText: /^0\.5 \// }).waitFor();
   assert.equal(await entries('ארוחת צהריים').count(), 0); // logged at lunchtime, but not listed as lunch food
-  // water in the quick add is a glass, and says so (the owner's asks: it said "לצהריים", then repeated the last amount)
-  await openAdd(); // her way in: water found by search ("מים ללא פירוט נוסף"), then one tap in the quick add
+  // water found by search counts on the water line too, and isn't offered again as a usual thing: it has its own line
+  await openAdd();
   await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('מים');
   await button(/^מים ללא פירוט נוסף/, dialog()).first().tap();
-  await dialog().getByRole('spinbutton').first().fill('2'); // not a glass's amount, so the quick add can't just repeat it
+  await dialog().getByRole('spinbutton').first().fill('2');
   await button('הוסף', dialog()).tap();
   await button(/^סיום · נוספו 1/, dialog()).tap();
   await dialog().waitFor({ state: 'detached' });
-  await button('יום קודם').tap(); await button('יום הבא').tap(); // the quick add reloads the month with the water
-  const drunk = await amount(), liters = (s) => Number(s.split(' ')[0]);
-  await button(/^מים ללא פירוט נוסף/, page.getByRole('region', { name: 'הוספה מהירה' })).tap();
-  const toast = page.getByRole('status').filter({ hasText: /^נוספה כוס מים/ });
-  await toast.waitFor();
-  await page.waitForFunction((was) => document.querySelector('[role=group][aria-label="מים"] [role=status]').innerText !== was, drunk);
-  assert.equal(Math.round((liters(await amount()) - liters(drunk)) * 1000), 250); // one glass, 250 ml
   assert.equal(await entries('ארוחת צהריים').count(), 0);
-  await button('בטל', toast).tap();
-  await water.getByRole('status').filter({ hasText: drunk }).waitFor();
+  await button('יום קודם').tap(); await button('יום הבא').tap(); // the quick add reloads the month with the water
+  const quick = page.getByRole('region', { name: 'הוספה מהירה' });
+  await quick.getByRole('listitem').first().waitFor();
+  assert.equal(await button(/^מים/, quick).count(), 0);
+  await openAdd();
+  await dialog().getByRole('region', { name: 'הרגילים שלך' }).waitFor();
+  await page.waitForTimeout(300); // the month loads after opening
+  assert.equal(await button(/^מים/, dialog().getByRole('region', { name: 'הרגילים שלך' })).count(), 0);
+  await button('סגור', dialog()).tap();
   while (await button('פחות כוס מים', water).isEnabled()) await button('פחות כוס מים', water).tap();
   await water.getByRole('status').filter({ hasText: /^0 \// }).waitFor();
 });
@@ -650,6 +678,12 @@ test('a supplement from its label: every vitamin per tablet, logged, and summed 
   await mine.getByText('מולטי ויטמין').tap();
   await mine.getByText('ויטמין D 25 מק״ג').waitFor();
   await button('יומן').tap();
+  // in the usual list, a food of your own says so; the database's don't
+  await openAdd();
+  const usual = dialog().getByRole('region', { name: 'הרגילים שלך' });
+  assert.match(await button(/^מולטי ויטמין/, usual).innerText(), /שלי/);
+  assert.doesNotMatch(await button(/^ענבים/, usual).innerText(), /שלי/);
+  await button('סגור', dialog()).tap();
 });
 
 
