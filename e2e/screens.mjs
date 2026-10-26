@@ -147,18 +147,25 @@ test('in the evening, a photo goes to the review list', async () => {
 });
 
 test('add what the photo missed, then add all to the chosen meal', async () => {
-  // a fat the photo can only guess is marked as a guess; this meal had none, so it's removed
-  const oil = dialog().getByText(/^ניחוש: שמן או רוטב/);
+  // a fat the photo can only guess is offered, not added: it isn't in the list until tapped (the owner's bread got butter she never had)
+  const oil = dialog().getByText(/^ניחוש: אולי היה גם שמן זית/);
   assert.equal(await oil.count(), 1);
+  const addAll = dialog().getByRole('button', { name: /^הוסף \(\d+\)$/ });
+  const before = await addAll.innerText();
+  await button('הוסף: שמן זית, 1 כף', dialog()).tap();
+  await dialog().getByText(/^ניחוש שהוספתם/).waitFor();
+  assert.notEqual(await addAll.innerText(), before, 'adding the guessed oil counts it');
   // the guide's article on it opens over the list; back closes only the article
   await button('למה תמונה מפספסת שמן?', dialog()).tap();
   const why = page.getByRole('dialog', { name: 'למה תמונה מפספסת קלוריות' });
   await why.waitFor();
   await page.keyboard.press('Escape');
   await why.waitFor({ state: 'detached' });
-  assert.equal(await oil.count(), 1);
+  assert.equal(await dialog().getByText(/^ניחוש שהוספתם/).count(), 1);
+  // this meal had none, so it's removed
   await button('הסר: שמן זית, 1 כף', dialog()).tap();
-  assert.equal(await oil.count(), 0);
+  assert.equal(await dialog().getByText(/^ניחוש/).count(), 0);
+  assert.equal(await addAll.innerText(), before);
   const foods = dialog().getByRole('combobox', { name: 'מזון' });
   const rows = await foods.count();
   // the photo got a food wrong and the matches don't have it: search the whole database instead

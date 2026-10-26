@@ -35,7 +35,7 @@ The five in-app articles, checked against these. Cloud sessions can't open most 
 
 ## 2026-10-23: photo apps miss hidden fat (PR #54)
 - **Source:** NIDDK/NIH, presented at NUTRITION 2026 (American Society for Nutrition, July 25–28 2026): 102 meals from a metabolic kitchen, every ingredient weighed, run through MyFitnessPal, Lose It!, Cal AI and Appediet. All four underestimated by about 250–345 kcal and ~30 g fat a meal (about a third); carbs were close; ketogenic meals were worse. A conference abstract, not yet a peer-reviewed paper. Coverage: [ScienceDaily](https://www.sciencedaily.com/releases/2026/07/260726015237.htm), [Newswise](https://www.newswise.com/articles/photo-based-calorie-tracking-apps-may-underestimate-energy-in-meals), [Medscape](https://www.medscape.com/viewarticle/photo-based-meal-apps-underestimate-calories-and-fat-2026a1000qo9).
-- **Changed:** `meal-photo` (v8) adds the oil, dressing, butter or sauce it can't see as its own row in spoons, marked as a guess and included by default. Not for foods named as fried (their oil is in the database). Also the guide article "למה תמונה מפספסת קלוריות".
+- **Changed:** `meal-photo` (v8) adds the oil, dressing, butter or sauce it can't see as its own row in spoons, marked as a guess. It was included by default; since 2026-10-26 it's only offered (one tap adds it), at the owner's request: a typed "bread and cheese" got butter she never had. Not for foods named as fried (their oil is in the database). Also the guide article "למה תמונה מפספסת קלוריות".
 - **Later, from the same research:** "מה נכנס ב־N קק״ל?" (PR #60). Not built yet: a weekly calorie target adapted from weigh-ins.
 
 ## 2026-10-22: goals from the body (PRs #20, #28, #31)
