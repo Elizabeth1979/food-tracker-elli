@@ -59,6 +59,11 @@ export const DAILY_VALUES: Record<string, number> = {
   'זרחן (מ״ג)': 1250, 'כולין (מ״ג)': 550,
 };
 
+// A period's daily average of a vitamin or mineral against its goal: "low" under 70% (most days likely miss a food
+// that brings it), "ok" from there (normal day-to-day spread), "good" at the goal. One day alone is too noisy for this.
+export const LOW_SHARE = 0.7;
+export const microLevel = (v: number, goal: number) => (v >= goal ? 'good' : v >= LOW_SHARE * goal ? 'ok' : 'low');
+
 // Grams of salt per gram of sodium (NaCl / Na, 58.44 / 22.99): labels and people think in salt, foods list sodium.
 export const SALT_PER_SODIUM = 2.54;
 // What each vitamin and mineral does, from the NIH Office of Dietary Supplements fact sheets, and, where its goal

@@ -24,7 +24,7 @@ export const VITAMINS = [
   'זרחן (מ״ג)', 'כולין (מ״ג)', 'אומגה 3 (מ״ג)',
 ];
 // The ones every MoH food carries (scripts/moh-vitamins.ts), shown in the day even at 0. The rest come from labels only.
-const LABEL_ONLY = ['ביוטין (מק״ג)', 'יוד (מק״ג)', 'כרום (מק״ג)', 'מוליבדן (מק״ג)', 'אומגה 3 (מ״ג)'];
+export const LABEL_ONLY = ['ביוטין (מק״ג)', 'יוד (מק״ג)', 'כרום (מק״ג)', 'מוליבדן (מק״ג)', 'אומגה 3 (מ״ג)'];
 export const FOOD_VITAMINS = VITAMINS.filter((k) => !LABEL_ONLY.includes(k));
 export type Extra = Record<string, number>;
 export type Nut = { kcal: number; carbs: number; fat: number; protein: number; extra?: Extra | null } & Partial<Record<MicroKey, number | null>>;
@@ -96,6 +96,7 @@ export const sum = (xs: Nut[]): Nut =>
 // No food behind it, so editing the amount scales the whole dish (in grams).
 export const dishItem = (name: string, parts: Item[]): Item =>
   ({ ...sum(parts), foodId: null, name, grams: r1(parts.reduce((g, p) => g + p.grams, 0)), qty: null, unit: null });
+export const isDish = (e: { foodId?: string | null }) => !e.foodId;
 // the fields an Entry / saved-meal item carries (strips ids, dates, owner…)
 export const pickItem = (e: Item): Item => {
   const { foodId, name, grams, qty, unit, kcal, carbs, fat, protein } = e;

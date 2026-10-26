@@ -68,7 +68,8 @@ export default function Reports({ ctx, date }: { ctx: Ctx; date: string }) {
           </section>
           <section className="card pad stack">
             <h3>ויטמינים ומינרלים{days.length > 1 ? ' · ממוצע ליום' : ''}</h3>
-            <MicroGoals n={avg} from={{ items: entries, when: days.length > 1 ? 'בתקופה' : 'ביום הזה' }} more={<ArticleLink slug="6-vitamins">עוד על הערך היומי</ArticleLink>} />
+            {logged.length > 1 && <p className="muted small">בממוצע: נמוך = פחות מ־70% מהיעד, סביר = 70% ומעלה.</p>}
+            <MicroGoals n={avg} levels={logged.length > 1} from={{ items: entries, when: days.length > 1 ? 'בתקופה' : 'ביום הזה' }} more={<ArticleLink slug="6-vitamins">עוד על הערך היומי</ArticleLink>} />
           </section>
           {days.length > 1 && <KcalChart data={byDay.map((x) => ({ d: x.d, v: x.t.kcal }))} goal={goal} />}
           {days.length > 1 && (

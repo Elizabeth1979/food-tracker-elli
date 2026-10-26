@@ -1,5 +1,6 @@
 // Names the foods in a meal photo (or a meal described in words, with no photo), with rough amounts, for the app's
-// review list, and asks the user up to 3 questions where the answer changes the calories a lot.
+// review list, and asks the user up to 3 questions where the answer changes the calories a lot (which dish a name means,
+// how much oil a typed salad had).
 // Then, with `mode: 'pick'`, it picks each item's database food from the closest ones the app found, or breaks a dish
 // the database lacks into ingredients. Calories always come from the app's database, never from the model.
 // With `mode: 'label'` it instead reads a printed nutrition table (טבלת ערכים תזונתיים) into per-100 g values
@@ -48,16 +49,19 @@ const SYSTEM = `You look at a photo of a meal and list the foods in it for a Heb
 - Also give each item's total weight in grams (\`grams\`); the app checks the unit against it.
 - Fat is what photos miss most. When food looks sautéed, roasted or fried in a pan, a salad looks dressed, bread looks buttered, or there is sauce, add the fat as its own item with \`hidden\` true, in spoons, under a plain name ("שמן זית", "שמן קנולה", "חמאה", "טחינה", "מיונז"). A food you name as fried ("שניצל מטוגן", "צ׳יפס") already counts its frying oil: don't add oil for it. Every other item has \`hidden\` false.
 - The user's note is more reliable than the photo: when it names a food or an amount, use it, and add foods it mentions that the photo hides.
-- With no photo, the note alone describes the meal: list its foods the same way.
+- With no photo, the note alone describes the meal: list its foods the same way. Nothing shows how it was dressed, so when a food is usually eaten with a fat, sauce or sugar the note doesn't mention (oil or dressing on a salad, tahini in a pita, butter on bread, sugar in coffee or tea), add it as its own item with \`hidden\` true in its usual amount and ask how much (the question's \`item\` is that added item), e.g. "שמן או רוטב על הסלט?" with "בלי", "כפית", "כף". Not for a food named as fried.
+- When the user says they made the dish (הכנתי, ביתי) and says what went into it, list each ingredient as its own item, in the amounts said or usual for such a dish.
 - The note is often dictated by voice: read a misheard or misspelled word as the food it most likely is in this meal (in a salad, a word that sounds like "מלפפון" is cucumber, not a pastry), and spoken amounts as amounts ("שתי כפות של עגבנייה" is 2 כף of עגבניה). Each food it names is one item, in the amount it says.
-- Ask a question only where neither the photo nor the note tells and the answer changes the item's calories by a quarter or more: creamy or clear soup, fried or grilled, with or without sauce, sugar or not, the size when nothing in the photo shows scale. Not for small differences. Write \`about\` from what you know already; answers come later.
+- Ask a question only where neither the photo nor the note tells and the answer changes the item's calories by a quarter or more: creamy or clear soup, fried or grilled, with or without sauce, sugar or not, the size when nothing in the photo shows scale. Not for small differences.
+- A name that means clearly different dishes in Israel gets a question whose options are those dishes, unless the photo or the note settles it: "סלט עוף" is a deli salad with mayonnaise ("סלט עוף עם מיונז") or a green salad with chicken pieces ("סלט ירוק עם עוף"); "קפה עם חלב" is instant coffee ("נס קפה") or espresso with steamed milk ("הפוך"). Write \`about\` from what you know already; answers come later.
 - If the photo shows no food, return an empty list.`;
 
 const PICK_SYSTEM = `You match each food of a meal to an entry of a Hebrew food database (the Israeli Ministry of Health's, and the user's own foods), for a food diary.
 For each item you get what was seen (name, \`about\`, amount), the user's answers to questions about it, and candidate database entries with their kcal per 100 g. The user's note covers the whole meal.
 - Choose the candidate that is this food, made this way: home-cooked or from an instant powder, restaurant style, creamy or clear, fried or grilled, sweetened or not. Its kcal per 100 g should be plausible for what was described. An entry that is a different kind of the same food is not a match.
 - When no candidate is this food (a restaurant or foreign dish the database lacks, or only another kind is listed), set id to null and break the dish into its main ingredients in \`parts\`: plain, generic Hebrew names as such a database lists them ("תירס", "שמנת מתוקה 32%", "סוכר", "חמאה", "ציר עוף", "אטריות"), each with an amount, together weighing what the whole dish does. Include the fat, sugar and cream a restaurant would typically use.
-- Keep the amount, or correct it where an answer tells you better (a size, "two cups"). Same units as the item.
+- Keep the amount, or correct it where an answer tells you better (a size, "two cups"). Same units as the item. When an answer says the item wasn't there ("בלי", "לא"), set qty 0.
+- An answer that names the kind of dish ("סלט ירוק עם עוף") decides it: choose that kind, or break that kind into its ingredients.
 - Return exactly one entry per item, in the same order.`;
 
 // The label is transcribed as printed; turning per-serving values into per-100 g is done below, not by the model.

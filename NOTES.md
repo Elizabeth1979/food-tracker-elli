@@ -2,6 +2,21 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-26: the food-estimate spec, built on the database
+
+**Done:**
+- The owner brought a spec ("Food estimate, phase 1") where the AI gives each food's nutrients itself. We reviewed it together: the app already has the Israeli database it said was missing (its "Israeli anchors", falafel 269 and egg salad 205, are `moh.json`'s numbers), and the AI's run-to-run spread (14%) is why calories come from the database. Agreed plan: keep the database, build the spec's new ideas on top of it:
+  1. **Asking twice:** adding a food (or a dish, by name) already logged that day in the last 30 minutes asks "כבר רשמת … להוסיף שוב?" first, in the app's own window; no on cancel, and a photo's pictures aren't saved either. Water never asks. In code only (`repeatOf` in `search.ts`, from the entry's `created_at`).
+  2. **Which one?:** `meal-photo` asks which dish a name means where it matters ("סלט עוף": deli with mayo or green salad with chicken; "קפה עם חלב": נס קפה or הפוך), and the answer decides the pick or the ingredients.
+  3. **Typed meals:** a salad, pita, bread or coffee typed without its fat or sugar gets a guessed one marked "ניחוש" and a question; "בלי" drops it (an answer of none comes back as amount 0, and `pickedParsed` drops it). "הכנתי" with ingredients lists each one.
+  4. **"הערכת AI"** on a dish the database lacks (logged from its ingredients), in the diary, its details and the review list.
+  5. **Vitamin levels:** Reports over two or more logged days says "נמוך" (under 70% of the goal on average) or "סביר" under each vitamin's goal; "✓ הושג" as before at the goal. Not for label-only ones (iodine…), which foods don't list.
+- `docs/meal-photo-cases.md`: the spec's 14 cases plus past bugs, each with what to expect, to run against the real model.
+- Dropped from the spec: AI nutrient values, the name cache (and its table), sending recent entries and saved dishes to the AI.
+- Tests: `search.test.ts` (repeats, "none" drops the item), `goals.test.ts` (levels), screen test (asking twice; which chicken salad; no oil; the levels).
+
+**Next:** the new prompt lines weren't run against the real model (no API key in the cloud session): run `docs/meal-photo-cases.md`, cases 4, 10 and 12 first.
+
 ## 2026-10-26: the quick add is hers to choose; macros and water up top; "שלי" in the usual list
 
 **Done:**

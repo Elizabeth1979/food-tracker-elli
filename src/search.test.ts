@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Food } from './db';
-import { GRAMS, candidatesFor, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, sameFood, searchFoods, splitAnd, unitFor } from './search.ts';
+import { GRAMS, candidatesFor, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, repeatOf, sameFood, searchFoods, splitAnd, unitFor } from './search.ts';
 
 const moh: Food[] = JSON.parse(readFileSync(new URL('../public/foods/moh.json', import.meta.url), 'utf8'));
 const first = (q: string, foods = moh, recent: string[] = []) => searchFoods(foods, q, recent)[0]?.name ?? '';
@@ -194,4 +194,27 @@ test('the AI\'s picks: an offered food with its amount, a dish it lacks as ingre
     ['ענבים', undefined, undefined, 10], // an id that wasn't offered is ignored
     ['לחם', undefined, undefined, 1], // no pick: the search's match
   ]);
+});
+
+test('an answer of "none" drops the item it was about', () => {
+  const seen = [{ name: 'סלט ירקות', qty: 2, unit: 'כוס', grams: 300 }, { name: 'שמן זית', qty: 1, unit: 'כף', grams: 10, hidden: true }];
+  const cands = candidatesFor(moh, seen, []);
+  const out = pickedParsed(seen, [{ id: cands[0][0].id, qty: 2, unit: 'כוס', grams: 300 }, { id: cands[1][0].id, qty: 0, unit: 'כף', grams: 0 }], cands);
+  assert.deepEqual(out.map((p) => p.query), ['סלט ירקות']);
+});
+
+test('the same food logged in the last half hour is a repeat', () => {
+  const now = Date.parse('2026-10-26T12:00:00Z');
+  const ago = (min: number) => new Date(now - min * 60000).toISOString();
+  const logged = [
+    { foodId: 'moh-1', name: 'עוגת שוקולד', created_at: ago(40) },
+    { foodId: 'moh-1', name: 'עוגת שוקולד', created_at: ago(5) },
+    { foodId: null, name: 'מרק תירס', created_at: ago(12) },
+    { foodId: 'moh-2', name: 'ענבים' }, // still waiting to be sent: no time yet
+  ];
+  assert.deepEqual(repeatOf(logged, [{ foodId: 'moh-1', name: 'עוגת שוקולד' }], now), { name: 'עוגת שוקולד', min: 5 });
+  assert.deepEqual(repeatOf(logged, [{ foodId: null, name: ' מרק  תירס' }], now), { name: 'מרק תירס', min: 12 }); // a dish, by name
+  assert.equal(repeatOf(logged, [{ foodId: 'moh-3', name: 'מרק תירס' }], now), null); // a food isn't a dish of the same name
+  assert.equal(repeatOf(logged, [{ foodId: 'moh-2', name: 'ענבים' }], now), null);
+  assert.equal(repeatOf(logged.slice(0, 1), [{ foodId: 'moh-1', name: 'עוגת שוקולד' }], now), null); // 40 minutes ago
 });

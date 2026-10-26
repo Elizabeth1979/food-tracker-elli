@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { goalsLeft, goalsOf, type Goals } from './goals';
 import type { Ctx } from './App';
-import { MEALS, WATER, pickItem, addDays, addEntries, amountLabel, client, deletePhoto, movePhoto, fmtDate, isWater, listPhotos, loadEntries, mealNow, sum, today, type Entry, type MealKey, type MealPhoto } from './lib';
-import { DayGoals, GoalsInfo, Group, MicroGoals, Modal, Ring, WaterLine, confirmIt, promptIt } from './ui';
+import { MEALS, WATER, pickItem, addDays, addEntries, amountLabel, client, deletePhoto, movePhoto, fmtDate, isDish, isWater, listPhotos, loadEntries, mealNow, sum, today, type Entry, type MealKey, type MealPhoto } from './lib';
+import { AiTag, DayGoals, GoalsInfo, Group, MicroGoals, Modal, Ring, WaterLine, confirmIt, promptIt } from './ui';
 import { AddDialog, EntryDialog, QuickAdd } from './AddDialog';
 import { Icon } from './icons';
 import { ArticleLink } from './Guide';
@@ -158,7 +158,7 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
             <div id={`meal-${m.key}`} hidden={!open}>
               {es.map((e) => (
                 <div key={e.id} className="row" role="button" tabIndex={0} onClick={() => setEditing(e)}>
-                  <div className="grow"><div>{e.name}</div><small className="muted">{amountLabel(e)}</small></div>
+                  <div className="grow"><div>{e.name}</div><small className="muted">{isDish(e) && <AiTag />}{amountLabel(e)}</small></div>
                   <b>{e.kcal}</b>
                   <button className="icon del" aria-label={`מחק: ${e.name}`} onClick={(ev) => { ev.stopPropagation(); remove(e); }}><Icon name="x" /></button>
                 </div>

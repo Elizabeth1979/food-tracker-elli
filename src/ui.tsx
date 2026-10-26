@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { MACROS, MICROS, WATER_GOAL_ML, extraParts, isFFQ, microAmounts, microSources, type Item, type MicroAmount, type Nut, type Unit } from './lib';
+import { LABEL_ONLY, MACROS, MICROS, WATER_GOAL_ML, extraParts, isFFQ, microAmounts, microSources, type Item, type MicroAmount, type Nut, type Unit } from './lib';
 import { Icon } from './icons';
-import { DAILY_VALUES, DEFAULT_GOALS, DV_WHY, MICRO_INFO, PROTEIN_PER_KG, SALT_PER_SODIUM, SODIUM_MAX, type Goals } from './goals';
+import { DAILY_VALUES, DEFAULT_GOALS, DV_WHY, MICRO_INFO, PROTEIN_PER_KG, SALT_PER_SODIUM, SODIUM_MAX, microLevel, type Goals } from './goals';
 
 // A native modal <dialog>: the browser traps focus, closes it on Esc, and on Android closes it with the back
 // button or gesture (close requests, Chrome 120+), so back no longer leaves the app. `onBack` gets that back
@@ -27,7 +27,8 @@ export function Modal({ title, onClose, onBack, footer, children }: { title: str
 type Asking = { title: string; text?: string; ok: string; danger?: boolean; field?: string; done: (v: string | null) => void };
 let show: (a: Asking | null) => void = () => {};
 const ask = (a: Omit<Asking, 'done'>) => new Promise<string | null>((done) => show({ ...a, done }));
-export const confirmIt = async (title: string, ok: string, text?: string) => (await ask({ title, text, ok, danger: true })) != null;
+// `danger` (deleting): a red button; otherwise the usual one ("add it again?").
+export const confirmIt = async (title: string, ok: string, text?: string, danger = true) => (await ask({ title, text, ok, danger })) != null;
 export const promptIt = (title: string, field: string, ok: string) => ask({ title, field, ok });
 export function AskHost() {
   const [a, setA] = useState<Asking | null>(null);
@@ -184,13 +185,16 @@ export function MacroLegend({ n, goals }: { n: Nut; goals?: Partial<Record<'carb
 // amber "מעל היעד" over), or for reference only ('ref': no green or amber).
 type GoalKind = 'min' | 'max' | 'ref';
 // With `onClick` the row is a button that opens more about it (spans inside: a button holds phrasing content only).
-function GoalRow({ label, value, goal, unit, kind, word = '', color, onClick }: { label: string; value: number; goal?: number; unit: string; kind: GoalKind; word?: string; color?: string; onClick?: () => void }) {
+// `level` (a period's average of a minimum): under the goal it says how far, "נמוך" or "סביר" (microLevel).
+function GoalRow({ label, value, goal, unit, kind, word = '', color, level, onClick }: { label: string; value: number; goal?: number; unit: string; kind: GoalKind; word?: string; color?: string; level?: boolean; onClick?: () => void }) {
   const state = !goal ? '' : kind === 'min' ? (value >= goal ? 'done' : '') : kind === 'max' ? (value > goal ? 'high' : 'done') : '';
+  const below = level && goal && kind === 'min' && microLevel(value, goal);
   const Row = onClick ? 'button' : 'div';
   return (
     <Row className="legend-row" onClick={onClick} aria-haspopup={onClick && 'dialog'}>
       <span className="legend-line">
-        <span className="grow">{label}{state === 'done' && kind === 'min' && <span className="ok"> ✓ הושג</span>}{state === 'high' && <span className="high"> מעל היעד</span>}</span>
+        <span className="grow">{label}{state === 'done' && kind === 'min' && <span className="ok"> ✓ הושג</span>}{state === 'high' && <span className="high"> מעל היעד</span>}
+          {below === 'low' && <span className="high"> נמוך</span>}{below === 'ok' && <span className="muted"> סביר</span>}</span>
         <span><b>{value}</b><span className="muted">{goal ? ` / ${word}${goal}` : ''} {unit}</span></span>
       </span>
       {goal ? <span className="bar"><i className={state} style={{ width: `${Math.min(100, (value / goal) * 100)}%`, background: state || !color ? undefined : color }} /></span> : null}
@@ -214,11 +218,13 @@ export function DayGoals({ n, goals }: { n: Nut; goals: Goals }) {
 // foods gave it; `more` goes in that window too (the article on daily values: Guide imports this file, not the other way).
 const SODIUM = 'נתרן (מ״ג)';
 const microGoal = (m: MicroAmount) => ({ label: m.name, value: m.v, goal: DAILY_VALUES[m.key], unit: m.unit, kind: m.key === SODIUM ? 'max' : 'min', word: m.key === SODIUM ? 'עד ' : '' }) as const;
-export function MicroGoals({ n, from, more }: { n: Nut; from?: { items: Item[]; when: string }; more?: ReactNode }) {
+// `levels` (an average over days): each row under its goal says "נמוך" or "סביר". Not for the label-only ones (iodine…):
+// foods don't list them, so their average only counts supplements.
+export function MicroGoals({ n, from, more, levels }: { n: Nut; from?: { items: Item[]; when: string }; more?: ReactNode; levels?: boolean }) {
   const [open, setOpen] = useState<MicroAmount | null>(null);
   return (
     <div className="legend">
-      {microAmounts(n).map((m) => <GoalRow key={m.key} {...microGoal(m)} onClick={from && (() => setOpen(m))} />)}
+      {microAmounts(n).map((m) => <GoalRow key={m.key} {...microGoal(m)} level={levels && !LABEL_ONLY.includes(m.key)} onClick={from && (() => setOpen(m))} />)}
       {open && from && <MicroInfo m={open} from={from} more={more} onClose={() => setOpen(null)} />}
     </div>
   );
@@ -310,6 +316,9 @@ export function MicroLine({ n }: { n: Nut }) {
 }
 
 type FoodLike = Nut & { name: string; servingG: number; source?: string | null };
+
+// On a dish the database lacks (isDish): its ingredients and their amounts were the AI's guess, so its values are less sure.
+export const AiTag = () => <span className="tag">הערכת AI</span>;
 
 // One-line nutrition summary for a food in lists: calories and macros for its serving size, in words.
 // Micronutrients show once a food is picked (NutLine). Own foods and FFQ group averages get a tag.
