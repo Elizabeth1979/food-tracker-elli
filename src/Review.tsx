@@ -9,7 +9,8 @@ import { ArticleLink } from './Guide';
 
 // `q` set: the row is searching the whole database for a different food (the match or the photo got it wrong).
 // `adding`: typing a new unit for its food.
-type Row = { id: number; p: Parsed; options: Food[]; food: Food | null; qty: string; unit: Unit; q?: string; adding?: boolean };
+// `offer`: a fat or sauce the AI guessed but nobody saw or wrote; it's only offered, and counts once the user adds it.
+type Row = { id: number; p: Parsed; options: Food[]; food: Food | null; qty: string; unit: Unit; q?: string; adding?: boolean; offer?: boolean };
 
 // The AI's pick (p.foodId) leads the options, the search's matches follow.
 const rowFor = (ctx: Ctx, p: Parsed, id: number, food?: Food): Row => {
@@ -17,7 +18,7 @@ const rowFor = (ctx: Ctx, p: Parsed, id: number, food?: Food): Row => {
   const options = food ? [food] : [...(chosen ? [chosen] : []), ...matchFoods(ctx.foods, p.query, ctx.recent).filter((f) => f !== chosen)].slice(0, 8);
   const f = options[0] ?? null;
   const a = f ? unitFor(f, p) : { qty: p.qty ?? 1, unit: { n: GRAMS, g: 1 } };
-  return { id, p, options, food: f, qty: String(a.qty), unit: a.unit };
+  return { id, p, options, food: f, qty: String(a.qty), unit: a.unit, offer: p.hidden };
 };
 
 // The foods a line of text (or a photo) turned into: each matched to a database food with an amount, all editable,
@@ -43,10 +44,10 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
   const choose = (r: Row, v: string) => (v === '+' ? setCreating(r) : v === '?' ? set(r.id, { q: '' }) : pick(r, r.options.find((f) => f.id === v)!));
 
   // A dish's ingredients go in as the dish, where its first ingredient was
-  const picked = rows.flatMap((r) => (r.food ? [{ dish: r.p.dish, it: itemFor(r.food, Number(r.qty) || 0, r.unit) }] : [])).filter((x) => x.it.grams > 0);
+  const picked = rows.flatMap((r) => (r.food && !r.offer ? [{ dish: r.p.dish, it: itemFor(r.food, Number(r.qty) || 0, r.unit) }] : [])).filter((x) => x.it.grams > 0);
   const items = picked.flatMap((x, i) => (!x.dish ? [x.it]
     : picked.findIndex((y) => y.dish === x.dish) === i ? [dishItem(x.dish, picked.filter((y) => y.dish === x.dish).map((y) => y.it))] : []));
-  const missing = rows.filter((r) => !r.food).length;
+  const missing = rows.filter((r) => !r.food && !r.offer).length;
 
   if (creating)
     return (
@@ -76,10 +77,12 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
                 <button className="icon del" aria-label={`הסר: ${r.p.text}`} onClick={() => setRows(rows.filter((x) => x.id !== r.id))}><Icon name="x" /></button>
               </div>
               {r.p.hidden && <>
-                <p className="muted small">ניחוש: שמן או רוטב שלא רואים בתמונה. היה? תקנו את הכמות. לא היה? הסירו.</p>
+                <p className="muted small">{r.offer ? `ניחוש: אולי היה גם ${r.p.query}, שלא רואים ולא נכתב. היה? הוסיפו.` : 'ניחוש שהוספתם: תקנו את הכמות לפי מה שהיה.'}</p>
                 <ArticleLink slug="4-photos">למה תמונה מפספסת שמן?</ArticleLink>
               </>}
-              {r.q !== undefined ? (
+              {r.offer ? (
+                <button className="btn" onClick={() => set(r.id, { offer: false })}><Icon name="plus" />הוסף: {r.p.text}</button>
+              ) : r.q !== undefined ? (
                 <div className="form">
                   <div className="amount-row">
                     <input type="search" autoFocus aria-label="חיפוש מזון אחר" placeholder="חיפוש מזון…" value={r.q} onChange={(e) => set(r.id, { q: e.target.value })} />
@@ -100,7 +103,7 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
                   <button className="btn small" onClick={() => setCreating(r)}><Icon name="plus" />צור מזון</button>
                 </div>
               )}
-              {r.food && r.q === undefined && (
+              {r.food && !r.offer && r.q === undefined && (
                 <div className="amount-row">
                   <input type="number" inputMode="decimal" min="0" step="any" aria-label="כמות" value={r.qty} onChange={(e) => set(r.id, { qty: e.target.value })} />
                   <select value={r.adding ? '+' : r.unit.n} aria-label="יחידה" onChange={(e) => {

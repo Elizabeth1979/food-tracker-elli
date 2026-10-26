@@ -2,6 +2,13 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-26: a guessed fat is offered, not added
+
+**Done:**
+- The owner typed bread with yellow cheese and the list already held "חמאה, 1 כפית" (37 kcal) she never had. A fat or sauce the AI guesses (`hidden`) is now only offered in the review list: "ניחוש: אולי היה גם …" with a "הוסף: …" button; it isn't counted until tapped (`offer` in `Review.tsx`). Answering the AI's question about it ("כפית") counts as yes; "בלי" drops it as before (`matchMeal`).
+- Trade-off, said to her: the research behind the guess (photo apps miss ~30 g fat a meal) is why it was on by default; the guide article now says the choice is hers and not to skip it without thinking.
+- Screen test: the guessed oil isn't counted until "הוסף: שמן זית, 1 כף".
+
 ## 2026-10-26: star fruit ("כוכבית") is found
 
 **Done:**

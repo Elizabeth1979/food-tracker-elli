@@ -193,7 +193,9 @@ export async function readMeal(files: File[], note: string): Promise<Seen> {
 // a dish the database lacks into ingredients, which are matched the same way in turn.
 export async function matchMeal(foods: Food[], recent: string[], seen: Seen, note: string, answers: (string | undefined)[]): Promise<Parsed[]> {
   const asked = seen.items.map((_, k) => seen.questions.flatMap((q, n) => (q.item === k && answers[n] ? [`${q.text} ${answers[n]}`] : [])));
-  const first = await pickFoods(foods, recent, seen.items, note, asked, true);
+  // A guessed fat the user answered about isn't a guess any more ("בלי" drops it in pickedParsed)
+  const items = seen.items.map((i, k) => (asked[k].length ? { ...i, hidden: false } : i));
+  const first = await pickFoods(foods, recent, items, note, asked, true);
   const parts = first.filter((p) => p.dish);
   if (!parts.length) return first;
   const more = await pickFoods(foods, recent, parts.map((p) => ({ name: p.query, qty: p.qty ?? 1, unit: p.unit ?? GRAMS, grams: p.grams })), note, parts.map((p) => [`מרכיב של ${p.dish}`]), false);
