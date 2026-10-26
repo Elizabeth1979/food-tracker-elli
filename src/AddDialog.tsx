@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, MEALS, WATER, isDish, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
+import { GRAMS, MEALS, isDish, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
 import { norm, repeatOf } from './search';
 import { goalsLeft, whatFits, type Goals } from './goals';
 import { AiTag, FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, confirmIt, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
@@ -100,7 +100,8 @@ function useUsual(ctx: Ctx, date: string, added: Entry[] = []) {
   // Order fixed when the dialog opens: adding moves a food up in "recent", and rows mustn't jump under your finger.
   const [order] = useState(ctx.recent);
   // Saved meals and single foods in one list, by how often you've had them this past month, at any meal, then by
-  // the most recent. A food counts each time it was logged; a saved meal each meal that had all of its foods.
+  // the most recent. A saved meal counts each meal that had all of its foods, and those foods don't count again on
+  // their own (the morning coffee with ghee is one thing, not three). Water is left out: it has its own line.
   // The same list whatever the meal: the owner wants it to stay put, with what she logs most at the top.
   const usual = useMemo(() => {
     const n: Record<string, number> = {};
@@ -110,13 +111,14 @@ function useUsual(ctx: Ctx, date: string, added: Entry[] = []) {
       (had[`${e.date}|${e.meal}`] ??= new Set()).add(e.foodId);
     }
     const byScore = <T extends { score: number }>(xs: T[]) => xs.sort((a, b) => b.score - a.score); // stable: ties stay most recent first
-    const foods = byScore(searchFoods(ctx.foods, '', order).map((f) => ({ key: `f:${f.id}`, f, score: n[f.id] ?? 0 }))).slice(0, USUAL_MAX);
     const saved = ctx.meals.map((m) => {
       const items = mealItems(ctx.foods, m);
       const ids = items.flatMap((it) => (it.foodId ? [it.foodId] : []));
       const score = ids.length ? Object.values(had).filter((s) => ids.every((id) => s.has(id))).length : 0;
+      for (const id of ids) n[id] = Math.max(0, (n[id] ?? 0) - score);
       return { key: `m:${m.id}`, m, items, score };
     });
+    const foods = byScore(searchFoods(ctx.foods, '', order).filter((f) => !isWater({ foodId: f.id })).map((f) => ({ key: `f:${f.id}`, f, score: n[f.id] ?? 0 }))).slice(0, USUAL_MAX);
     return byScore([...foods, ...saved]);
   }, [ctx.foods, ctx.meals, order, month]);
   return { month, last, usual };
@@ -202,11 +204,11 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
     return it ? add(key, it) : setSel(food!); // no amount on record yet: ask once
   };
 
-  const mealPick = (r: { key: string; m: SavedMeal; items: Item[] }) => <Pick key={r.key} saved on={!!done[r.key]} name={r.m.name} detail={r.items.map((i) => head(i.name)).join(' · ')}
+  const mealPick = (r: { key: string; m: SavedMeal; items: Item[] }) => <Pick key={r.key} saved on={!!done[r.key]} name={r.m.name} detail={mealDetail(r.items)}
     kcal={sum(r.items).kcal} onClick={() => toggle(r.key, () => r.items)} />;
   const foodPick = (r: { key: string; f: Food }) => {
     const e = last[r.f.id];
-    return <Pick key={r.key} on={!!done[r.key]} name={r.f.name} detail={e ? amountLabel(e) : undefined}
+    return <Pick key={r.key} on={!!done[r.key]} name={r.f.name} mine={r.f.source !== 'moh'} detail={e ? amountLabel(e) : undefined}
       kcal={e?.kcal} onClick={() => toggle(r.key, () => (e ? [pickItem(e)] : null), r.f)} onOpen={() => !busy && setSel(r.f)} />;
   };
 
@@ -264,7 +266,7 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
               {usual.length > 0 && (
                 <section aria-labelledby={`${uid}-u`}>
                   <h3 id={`${uid}-u`}>הרגילים שלך</h3>
-                  <p className="muted small">לחיצה על ＋ מוסיפה בכמות של הפעם הקודמת. לכמות אחרת, לחצו על השם. <Icon name="utensils" /> ארוחה שמורה.</p>
+                  <p className="muted small">לחיצה על ＋ מוסיפה בכמות של הפעם הקודמת. לכמות אחרת, לחצו על השם. <Icon name="utensils" /> ארוחה שמורה. {MINE_HINT}</p>
                   {(more ? usual : usual.slice(0, USUAL_SHOWN)).map((r) => ('m' in r ? mealPick(r) : foodPick(r)))}
                   {!more && usual.length > USUAL_SHOWN && <button className="link" onClick={() => setMore(true)}>עוד {usual.length - USUAL_SHOWN}</button>}
                 </section>
@@ -285,19 +287,22 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
   );
 }
 
-// The day's quick-add row: your most usual things as buttons, one tap adds last time's amount to the meal of the time
-// of day, and "בטל" takes it back. For what you have daily (the morning coffee) without opening ＋.
+// The day's quick-add row: one tap adds last time's amount to the meal of the time of day, and "בטל" takes it back.
+// For what you have daily (the morning coffee) without opening ＋. "עריכה" picks which ones (saved on the profile);
+// until then, the most usual things that have calories (black coffee is 0: nothing to count).
 // Only what has an amount on record, so a tap never needs a question.
 export function QuickAdd({ ctx, date, onAdded, onRemoved }: { ctx: Ctx; date: string; onAdded: (e: Entry[]) => void; onRemoved: (e: Entry[]) => void }) {
   const { last, usual } = useUsual(ctx, date);
   const [just, setJust] = useState<{ name: string; es: Entry[] } | null>(null);
+  const [editing, setEditing] = useState(false);
   const uid = useId();
-  const picks = usual.flatMap((r) => {
-    // water is a glass, like the water line's ＋, whatever amount was logged last
-    const items = 'm' in r ? r.items : isWater({ foodId: r.f.id }) ? [{ ...WATER, foodId: r.f.id, name: r.f.name }] : last[r.f.id] ? [pickItem(last[r.f.id])] : [];
-    return items.length ? [{ key: r.key, name: 'm' in r ? r.m.name : r.f.name, saved: 'm' in r, items }] : [];
-  }).slice(0, QUICK_SHOWN);
-  if (!picks.length) return null;
+  const offered = usual.flatMap((r) => {
+    const items = 'm' in r ? r.items : last[r.f.id] ? [pickItem(last[r.f.id])] : [];
+    return items.length ? [{ key: r.key, name: 'm' in r ? r.m.name : r.f.name, saved: 'm' in r, mine: 'f' in r && r.f.source !== 'moh', items }] : [];
+  });
+  const chosen = ctx.profile?.quick;
+  const picks = chosen ? offered.filter((p) => chosen.includes(p.key)) : offered.filter((p) => sum(p.items).kcal > 0).slice(0, QUICK_SHOWN);
+  if (!offered.length) return null;
   const add = async (p: (typeof picks)[number]) => {
     ctx.addRecent(p.items.flatMap((i) => (i.foodId ? [i.foodId] : [])));
     const es = await addEntries(date, mealNow(), p.items);
@@ -311,9 +316,19 @@ export function QuickAdd({ ctx, date, onAdded, onRemoved }: { ctx: Ctx; date: st
     await Promise.all(es.map((e) => client.models.Entry.delete({ id: e.id })));
     onRemoved(es);
   };
+  // none chosen: back to automatic
+  const save = async (keys: string[]) => {
+    setEditing(false);
+    const quick = keys.length ? keys : null;
+    ctx.setProfile({ ...ctx.profile!, quick });
+    await client.models.Profile.update({ id: ctx.profile!.id, quick });
+  };
   return (
     <section aria-labelledby={`${uid}-q`}>
-      <h3 id={`${uid}-q`} className="small muted">הוספה מהירה</h3>
+      <div className="group-head">
+        <h3 id={`${uid}-q`} className="small muted">הוספה מהירה</h3>
+        <button className="link" aria-label="עריכת הוספה מהירה" onClick={() => setEditing(true)}>עריכה</button>
+      </div>
       <ul className="chips">
         {picks.map((p) => (
           <li key={p.key}>
@@ -326,10 +341,32 @@ export function QuickAdd({ ctx, date, onAdded, onRemoved }: { ctx: Ctx; date: st
           </li>
         ))}
       </ul>
-      {just && <div className="toast" role="status">{just.es.every(isWater) ? 'נוספה כוס מים' : <>נוסף ״{head(just.name)}״ ל{placeOf(just.es)}</>} <button onClick={() => undo(just)}>בטל</button></div>}
+      {just && <div className="toast" role="status">נוסף ״{head(just.name)}״ ל{placeOf(just.es)} <button onClick={() => undo(just)}>בטל</button></div>}
+      {editing && <QuickEdit offered={offered} chosen={picks.map((p) => p.key)} onSave={save} onClose={() => setEditing(false)} />}
     </section>
   );
 }
+
+// Which of the usual things the quick add offers: tap to choose, tap again to leave out, most usual first.
+function QuickEdit({ offered, chosen, onSave, onClose }: { offered: { key: string; name: string; saved: boolean; mine: boolean; items: Item[] }[]; chosen: string[]; onSave: (keys: string[]) => void; onClose: () => void }) {
+  const [on, setOn] = useState(() => new Set(chosen));
+  const toggle = (key: string) => setOn((cur) => { const next = new Set(cur); if (!next.delete(key)) next.add(key); return next; });
+  return (
+    <Modal title="עריכת הוספה מהירה" onClose={onClose}
+      footer={<button className="btn primary" onClick={() => onSave(offered.flatMap((p) => (on.has(p.key) ? [p.key] : [])))}>שמירה</button>}>
+      <p className="muted small">מהרגילים שלך, בכמות של הפעם הקודמת. <Icon name="utensils" /> ארוחה שמורה. {MINE_HINT}</p>
+      <p className="muted small" role="status">{on.size ? `נבחרו ${on.size}` : 'לא נבחר כלום: יוצגו הרגילים ביותר'}</p>
+      <div className="usual">
+        {offered.map((p) => (
+          <Pick key={p.key} name={p.name} saved={p.saved} mine={p.mine} detail={p.saved ? mealDetail(p.items) : amountLabel(p.items[0])}
+            kcal={sum(p.items).kcal} on={on.has(p.key)} onClick={() => toggle(p.key)} />
+        ))}
+      </div>
+    </Modal>
+  );
+}
+
+const mealDetail = (items: Item[]) => items.map((i) => head(i.name)).join(' · ');
 
 const QUICK_SHOWN = 6;
 
@@ -366,12 +403,12 @@ const MealSeg = ({ meal, onChange }: { meal: MealKey; onChange: (m: MealKey) => 
 );
 
 // A usual thing: tap adds it, tap again takes it out. With onOpen, only ＋ does that, and the name opens the amount picker.
-// A saved meal is marked with the utensils icon, named for screen readers too.
-function Pick({ name, detail, kcal, on, saved, onClick, onOpen }: { name: string; detail?: string; kcal?: number; on: boolean; saved?: boolean; onClick: () => void; onOpen?: () => void }) {
+// A saved meal is marked with the utensils icon, named for screen readers too; a food of your own is tagged "שלי".
+function Pick({ name, detail, kcal, on, saved, mine, onClick, onOpen }: { name: string; detail?: string; kcal?: number; on: boolean; saved?: boolean; mine?: boolean; onClick: () => void; onOpen?: () => void }) {
   const body = <>
     <div className="grow">
       <div>{saved && <Icon name="utensils" />}{name}{saved && <span className="sr-only"> (ארוחה שמורה)</span>}</div>
-      {detail && <small className="muted">{detail}</small>}
+      {(mine || detail) && <small className="muted">{mine && <span className="tag">שלי</span>}{detail}</small>}
     </div>
     {kcal != null && <span className="kcal">{kcal}</span>}
   </>;

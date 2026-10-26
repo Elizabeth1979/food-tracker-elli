@@ -49,7 +49,8 @@ create table profiles (
   id uuid primary key default auth.uid() references auth.users on delete cascade,
   kcal real, carbs real, fat real, protein real,
   recent text[], -- recently logged food ids, newest first (search favours them on every device)
-  body jsonb -- { sex, birthYear, heightCm, activity, aim }: what the goals are worked out from
+  body jsonb, -- { sex, birthYear, heightCm, activity, aim }: what the goals are worked out from
+  quick text[] -- the day's quick add as the user chose it: "f:<food id>" / "m:<saved meal id>"; null = automatic
 );
 
 -- Weigh-ins; the app keeps one per day. The latest one updates the goals.

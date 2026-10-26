@@ -17,6 +17,18 @@ What was done in each work session and what's next. Newest first.
 
 **Next:** the new prompt lines weren't run against the real model (no API key in the cloud session): run `docs/meal-photo-cases.md`, cases 4, 10 and 12 first.
 
+## 2026-10-26: the quick add is hers to choose; macros and water up top; "שלי" in the usual list
+
+**Done:**
+- The owner wanted the plain coffee (0 kcal), the tomato and water out of "הוספה מהירה", and her coffee with ghee, cappuccino and the Müller 25 yogurt in. A new "עריכה" next to the heading picks them from her usual things (one tap each, "שמירה"); saved in `profiles.quick` (migration `profiles_quick_add`, with her OK), so every device has it. Nothing picked = automatic: the 6 most usual that have calories.
+- Water is out of the quick add and the ＋ window's usual list: it has its own line (the quick add's glass-of-water special case is gone).
+- A saved meal now counts as one thing in the usual order: its foods don't count again on their own (her coffee with ghee showed as three rows: the meal, ghee and a 0-kcal coffee).
+- Day summary order: ring, then calories and macros, then water, then the quick add and "מה נכנס".
+- Usual list (and the quick add's chooser): a food of her own is tagged "שלי", like search results.
+- Screen test: choosing the quick add (and back to automatic), the saved meal heading the usual list, no water in either list, the "שלי" tag.
+
+**Next:** she still needs to open "עריכה" once and pick hers. A picked food she hasn't logged in 30 days drops out (no amount on record).
+
 ## 2026-10-25: Reports no longer lists each day's foods on screen
 
 **Done:**
