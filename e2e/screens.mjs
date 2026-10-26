@@ -616,11 +616,13 @@ test('reports over days say how each vitamin\'s average stands; one day doesn\'t
   await againIfAsked(button(/^סיום · נוספו 1/, dialog())); // the photo meal there has grapes
   await button(/^סיום · נוספו 1/, dialog()).tap();
   await dialog().waitFor({ state: 'detached' });
+  await button('יום הבא').tap(); // reports end on the diary's day
   await button(/דוחות/).tap();
   await button('שבוע').tap();
   await card.getByText('בממוצע: נמוך = פחות מ־70% מהיעד, סביר = 70% ומעלה.').waitFor();
   assert.ok(await levels());
   await button('יומן').tap(); // yesterday as it was, as the other tests expect
+  await button('יום קודם').tap();
   await button(/^מחק: ענבים/).last().tap();
   await page.waitForFunction((n) => document.querySelectorAll('[aria-label^="מחק: "]').length === n, before);
   await button('יום הבא').tap();
