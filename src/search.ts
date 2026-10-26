@@ -24,9 +24,9 @@ const RARE = ['אם', 'תינוקות', 'הודו', 'בופאלו', 'נאקות'
   // organs, odd cuts and fast food: "עוף" means the meat, not its liver, feet or a McDonald's item
   'לב', 'לבבות', 'כבד', 'טחול', 'קורקבן', 'קורקבנים', 'כליות', 'לשון', 'מוח', 'קיבה', 'גב', 'צוואר', 'עצמות', 'רגליים',
   'מקדונלדס', 'גלוטן', 'הצומח'].map(norm); // gluten-free and plant-based ("מן הצומח") versions only when typed
-// Words a photo or a person uses that the database names otherwise: mashed potato is "פירה", and "חלבונים" are egg whites
-// ("חלבון" alone is protein too).
-const SAME: Record<string, string> = { מעוך: 'פירה', מעוכים: 'פירה', מעוכה: 'פירה', חלבונים: 'ביצה חלבון' };
+// Words a photo or a person uses that the database names otherwise: mashed potato is "פירה", "חלבונים" are egg whites
+// ("חלבון" alone is protein too), and star fruit ("כוכבית") is "קרמבולה".
+const SAME: Record<string, string> = { מעוך: 'פירה', מעוכים: 'פירה', מעוכה: 'פירה', חלבונים: 'ביצה חלבון', כוכבית: 'קרמבולה' };
 const FRESH = ['טרי', 'טריה', 'טריים', 'טריות', 'רגיל'].map(norm);
 // Everyday staples whose plain entry loses on name length alone: "פיתה" means a regular pita, not a toasted one,
 // "לחמניה" a white roll, not an anise one, and "שניצל" a fried chicken breast one, not spinach.
@@ -180,10 +180,14 @@ function matchExact(foods: Food[], query: string, recent: string[]) {
   return plain.length ? [...plain, ...hits.filter((f) => !plain.includes(f))] : hits;
 }
 // A word the database doesn't know ("תפוח אדמה מבושל בתנור") shouldn't leave the row unmatched: drop words from the end.
+// An AI unsure of the database's name gives two ("כוכבית (קרמבולה)"): try each before dropping words.
 export function matchFoods(foods: Food[], query: string, recent: string[]): Food[] {
   const hits = matchExact(foods, query, recent);
+  if (hits.length) return hits;
+  const alt = /^(.+?)\s*\((.+)\)\s*$/.exec(query);
+  if (alt) { const a = matchFoods(foods, alt[1], recent); return a.length ? a : matchFoods(foods, alt[2], recent); }
   const words = norm(query).split(' ');
-  return hits.length || words.length < 2 ? hits : matchFoods(foods, words.slice(0, -1).join(' '), recent);
+  return words.length < 2 ? hits : matchFoods(foods, words.slice(0, -1).join(' '), recent);
 }
 
 // "קפה וגרנולה" matches nothing as one food: split it at the "ו" into two items. Only when the whole phrase has no match.
