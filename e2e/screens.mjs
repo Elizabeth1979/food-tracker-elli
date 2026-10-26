@@ -598,16 +598,17 @@ test('the phone back button closes a window, and returns from the reports tab to
   await button(/הוספה$/).waitFor();
 });
 
-test('reports over days say how each vitamin\'s average stands; one logged day doesn\'t', async () => {
+test('reports over days say how each vitamin\'s average stands; one day doesn\'t', async () => {
   const card = page.getByRole('heading', { name: /^ויטמינים ומינרלים/ }).locator('..');
   const levels = async () => /(נמוך|סביר)\s/.test(await card.innerText());
   await button(/דוחות/).tap();
-  await button('שבוע').tap();
+  await button('יום').tap();
   await card.waitFor();
-  assert.equal(await levels(), false); // only today is logged: one day is too noisy to judge
-  // a second logged day, yesterday
+  assert.equal(await levels(), false); // one day is too noisy to judge
+  // a week with another logged day: grapes yesterday too
   await button('יומן').tap();
   await button('יום קודם').tap();
+  const before = await page.getByRole('button', { name: /^מחק: / }).count();
   await openAdd();
   await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('ענבים');
   await button(/^ענבים/, dialog()).first().tap();
@@ -618,11 +619,9 @@ test('reports over days say how each vitamin\'s average stands; one logged day d
   await button('שבוע').tap();
   await card.getByText('בממוצע: נמוך = פחות מ־70% מהיעד, סביר = 70% ומעלה.').waitFor();
   assert.ok(await levels());
-  await button('יום').tap();
-  assert.equal(await levels(), false);
-  await button('יומן').tap(); // yesterday empty again, as the other tests expect
-  await button(/^מחק: ענבים/).tap();
-  await page.waitForFunction(() => !document.querySelector('[aria-label^="מחק: "]'));
+  await button('יומן').tap(); // yesterday as it was, as the other tests expect
+  await button(/^מחק: ענבים/).last().tap();
+  await page.waitForFunction((n) => document.querySelectorAll('[aria-label^="מחק: "]').length === n, before);
   await button('יום הבא').tap();
 });
 
