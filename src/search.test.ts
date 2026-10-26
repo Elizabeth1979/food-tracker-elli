@@ -113,6 +113,9 @@ test('unitFor: a photo\'s weight guess overrules a unit far off it', () => {
   assert.equal(unitFor(lettuce, { qty: 4, unit: 'יחידה', grams: 40 }).unit.n, 'עלה'); // 4 leaves, not 4 heads of 648 g
   assert.deepEqual(unitFor(potato, { qty: 6, unit: 'יחידה', grams: 300 }), { qty: 300, unit: { n: GRAMS, g: 1 } }); // small ones: no unit fits
   assert.equal(unitFor(schnitzel, { qty: 2, unit: 'יחידה', grams: 160 }).unit.n, 'יחידה קטנה'); // another size that fits
+  // star fruit has no piece size: "3 יחידה" was logged as 3 g; the photo's 120 g stands instead
+  const star = moh.find((f) => f.name === 'קרמבולה, טרי')!;
+  assert.deepEqual(unitFor(star, { qty: 3, unit: 'יחידה', grams: 120 }), { qty: 120, unit: { n: GRAMS, g: 1 } });
   assert.equal(unitFor(schnitzel, { qty: 2, unit: 'יחידה', grams: 300 }).unit.n, 'יחידה בינונית'); // close enough: kept
   // the owner's leftover rice came back "3 כף" but 120 g: photos overestimate, so the smaller amount stays
   assert.deepEqual(unitFor(byId('moh-2721'), { qty: 3, unit: 'כף', grams: 120 }), { qty: 3, unit: { n: 'כף', g: 11 } });

@@ -35,6 +35,10 @@ Past bugs, kept as cases so they don't come back:
 | 18 | Typed as dictated: "שתי כפות של עגבנייה ומלפפון" | tomato 2 כף, cucumber |
 | 19 | Photo of star fruit slices on a plate, no note | carambola ("קרמבולה, טרי"), not bread and not "broken into ingredients" |
 
+## Comparing models
+
+`scripts/compare-models.ts` runs cases like these (photos with a known answer) through the function's code with each model and writes a report next to the cases file: pass/fail, foods, calories, time and cost per photo. How to run it is at the top of the script (Deno, `ANTHROPIC_API_KEY`). Photos stay out of the repo.
+
 ## Results
 
 | Date | Model | Passed | Notes |

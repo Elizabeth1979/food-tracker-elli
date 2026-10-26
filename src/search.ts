@@ -139,7 +139,9 @@ export function parseLine(text: string): Parsed[] {
 export function unitFor(food: Food, p: Pick<Parsed, 'qty' | 'unit' | 'grams'>): { qty: number; unit: Unit } {
   const a = unitByName(food, p);
   const g = p.grams;
-  if (!g || a.qty * a.unit.g < g * OFF) return a;
+  // "3 יחידה" of a food with no piece size (star fruit) falls back to 3 grams: then the weight guess is the amount
+  const lost = !!p.unit && p.unit !== GRAMS && a.unit.n === GRAMS;
+  if (!g || (!lost && a.qty * a.unit.g < g * OFF)) return a;
   const best = unitsOf(food).slice(1).sort((x, y) => off(a.qty * x.g, g) - off(a.qty * y.g, g))[0];
   return best && off(a.qty * best.g, g) < OFF ? { qty: a.qty, unit: best } : { qty: Math.round(g), unit: unitsOf(food)[0] };
 }
@@ -245,6 +247,34 @@ export function pickedParsed(items: SeenItem[], picks: (Picked | undefined)[], c
     if (p.parts?.length) return p.parts.map((x) => seenParsed(x, i.name));
     return [seenParsed({ ...i, qty: p.qty, unit: p.unit, grams: p.grams })];
   });
+}
+
+export type Seen = { items: SeenItem[]; questions: Question[] };
+// The meal-photo function's 'pick' mode, passed in so this file stays free of the data layer (the model comparison
+// script calls the function's code directly).
+export type AskPick = (body: { note: string; items: unknown[] }) => Promise<Picked[]>;
+// The AI matches each item to one of its closest database foods (with the note and the answers given), or breaks
+// a dish the database lacks into ingredients, which are matched the same way in turn.
+export async function matchMealWith(ask: AskPick, foods: Food[], recent: string[], seen: Seen, note: string, answers: (string | undefined)[]): Promise<Parsed[]> {
+  const asked = seen.items.map((_, k) => seen.questions.flatMap((q, n) => (q.item === k && answers[n] ? [`${q.text} ${answers[n]}`] : [])));
+  const first = await pickFoods(ask, foods, recent, seen.items, note, asked, true);
+  const parts = first.filter((p) => p.dish);
+  if (!parts.length) return first;
+  const more = await pickFoods(ask, foods, recent, parts.map((p) => ({ name: p.query, qty: p.qty ?? 1, unit: p.unit ?? GRAMS, grams: p.grams })), note, parts.map((p) => [`מרכיב של ${p.dish}`]), false);
+  let n = 0;
+  return first.map((p) => (p.dish ? { ...more[n++], dish: p.dish } : p));
+}
+// One round of picking. If it fails, the search's own matches stand.
+async function pickFoods(ask: AskPick, foods: Food[], recent: string[], seen: SeenItem[], note: string, answers: string[][], parts: boolean): Promise<Parsed[]> {
+  const cands = candidatesFor(foods, seen, recent);
+  const items = seen.map((i, k) => ({ ...i, answers: answers[k], candidates: cands[k].map((f) => ({ id: f.id, name: f.name, kcal: per100(f) })) }));
+  try {
+    const picks = await ask({ note, items });
+    return pickedParsed(seen, parts ? picks : picks.map((p) => ({ ...p, parts: [] })), cands);
+  } catch (e) {
+    console.error(e);
+    return seen.map((i) => seenParsed(i));
+  }
 }
 
 // ---------- logging the same thing twice ----------
