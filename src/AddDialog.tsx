@@ -503,18 +503,20 @@ function TextOrPhoto({ ctx, files = [], describe, cta, onAdd }: { ctx: Ctx; file
   return (
     <div className="form">
       {busy ? <Reading file={busy.file} text={busy.text} /> : <PhotoPick camera="צילום" gallery="מהגלריה" multiple onFile={(f) => setPicked((cur) => [...cur, f].slice(0, MAX_PHOTOS))} />}
-      {/* Locked while something is being read, so it's clear that something is going on */}
+      {/* While something is being read the text stays in view, locked, and the buttons go: nothing to press until it's done */}
       <fieldset className="form" disabled={!!busy}>
         <label>
           <span>מה אכלת? אפשר עם כמויות, מופרד בפסיקים</span>
           <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="יוגורט 150 גרם, 10 ענבים, כף חמאת בוטנים, 2 כפות גרנולה" autoFocus={!files.length && !describe} />
         </label>
-        <div className="grid2">
-          <button className="btn" disabled={empty} aria-describedby={empty || busy ? why : undefined} onClick={() => read([], text)}><Icon name="bulb" />{SMART}</button>
-          <button className="btn primary" disabled={empty} aria-describedby={empty || busy ? why : undefined} onClick={() => setParsed(parseLine(text))}>המשך לבדיקה</button>
-        </div>
-        {(busy || empty) ? <Why id={why}>{busy ? 'אפשר להמשיך כשהזיהוי יסתיים' : 'כתבו מה אכלתם כדי להמשיך'}</Why>
-          : <p className="muted small">{SMART}: למנה ממסעדה או משהו שהחיפוש לא מכיר. שואל אם צריך, ומפרק למרכיבים מה שאין במאגר.</p>}
+        {!busy && <>
+          <div className="grid2">
+            <button className="btn" disabled={empty} aria-describedby={empty ? why : undefined} onClick={() => read([], text)}><Icon name="bulb" />{SMART}</button>
+            <button className="btn primary" disabled={empty} aria-describedby={empty ? why : undefined} onClick={() => setParsed(parseLine(text))}>המשך לבדיקה</button>
+          </div>
+          {empty ? <Why id={why}>כתבו מה אכלתם כדי להמשיך</Why>
+            : <p className="muted small">{SMART}: למנה ממסעדה או משהו שהחיפוש לא מכיר. שואל אם צריך, ומפרק למרכיבים מה שאין במאגר.</p>}
+        </>}
       </fieldset>
       {err && <p className="error">{err}</p>}
     </div>
