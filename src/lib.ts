@@ -3,7 +3,7 @@ import { client, hasPending, listEntries, supabase, syncPending, type Food, type
 import { GRAMS, json, matchMealWith, unitsOf, type AskPick, type Picked, type Seen, type Unit } from './search';
 
 export { client, hasPending, syncPending };
-export { GRAMS, json, unitsOf, searchFoods, matchFoods, parseLine, splitAnd, unitFor, isFFQ, kcalOff, sameFood, type Unit, type Parsed, type Question, type Seen } from './search';
+export { GRAMS, json, unitsOf, searchFoods, matchFoods, hasFat, parseLine, splitAnd, unitFor, isFFQ, kcalOff, sameFood, type Unit, type Parsed, type Question, type Seen } from './search';
 export type { Food, Entry, SavedMeal, Profile, BodyInfo, Weight } from './db';
 export type MealKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 export const MICROS = [

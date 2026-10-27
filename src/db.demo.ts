@@ -112,6 +112,7 @@ function demoAnswer({ mode, note = '', items = [] }: Demo) {
     };
   if (note.includes('מרק')) return { items: [SOUP], questions: [{ item: 0, text: 'איך היה המרק?', options: ['סמיך ושמנתי', 'צלול'] }] };
   if (note.includes('סלט עוף')) return { items: [{ name: 'סלט עוף', qty: 1, unit: 'מנה', grams: 200 }], questions: [{ item: 0, text: 'איזה סלט עוף?', options: ['סלט עוף עם מיונז', 'סלט ירוק עם עוף'] }] };
+  if (note.includes('ספגטי בולונז')) return { items: [{ name: 'ספגטי מבושל', qty: 250, unit: 'גרם', grams: 250 }, { name: 'רוטב בולונז', qty: 200, unit: 'גרם', grams: 200 }, { name: 'שמן זית', qty: 1, unit: 'כף', grams: 10, hidden: true }], questions: [] };
   if (note.includes('סלט ירקות')) return { items: [{ name: 'סלט ירקות', qty: 2, unit: 'כוס', grams: 300 }, { name: 'שמן זית', qty: 1, unit: 'כף', grams: 10, hidden: true }], questions: [{ item: 1, text: 'שמן או רוטב על הסלט?', options: ['בלי', 'כפית', 'כף'] }] };
   return { items: [{ name: 'יוגורט', qty: 1, unit: 'גביע', grams: 150 }, { name: 'ענבים', qty: 10, unit: 'יחידה', grams: 60 }, { name: 'חמאת בוטנים', qty: 1, unit: 'כפית', grams: 10 }, { name: 'גרנולה', qty: 2, unit: 'כף', grams: 20 }, { name: 'שמן זית', qty: 1, unit: 'כף', grams: 10, hidden: true }], questions: [] };
 }
