@@ -182,7 +182,13 @@ test('add what the photo missed, then add all to the chosen meal', async () => {
   await button('הוסף', dialog()).tap();
   const units = dialog().getByRole('combobox', { name: 'יחידה' });
   await units.last().selectOption('+');
+  // a known size fills its usual grams (the owner didn't know what a spoon of her labneh weighs); a new name clears them
+  await dialog().getByRole('textbox', { name: 'שם היחידה' }).fill('כפית');
+  await dialog().getByRole('status').filter({ hasText: 'כפית = 5 ג׳' }).waitFor();
+  assert.equal(await dialog().getByRole('spinbutton', { name: 'שוקלות יחד (גרם)' }).inputValue(), '5');
   await dialog().getByRole('textbox', { name: 'שם היחידה' }).fill('פיתה ענקית');
+  await dialog().getByRole('status').filter({ hasText: 'כפית = 5 ג׳' }).waitFor({ state: 'detached' });
+  assert.equal(await dialog().getByRole('spinbutton', { name: 'שוקלות יחד (גרם)' }).inputValue(), '');
   await dialog().getByRole('spinbutton', { name: 'שוקלות יחד (גרם)' }).fill('150');
   await button('שמור', dialog()).tap();
   await page.waitForFunction(() => [...document.querySelectorAll('select[aria-label="יחידה"]')].at(-1).selectedOptions[0].text === 'פיתה ענקית (150 ג׳)');

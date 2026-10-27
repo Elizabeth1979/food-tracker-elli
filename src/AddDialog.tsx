@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, MEALS, isDish, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
-import { norm, repeatOf } from './search';
+import { GRAMS, MEALS, isDish, loadMoh, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
+import { norm, repeatOf, unitGuesser } from './search';
 import { goalsLeft, whatFits, type Goals } from './goals';
 import { AiTag, FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, confirmIt, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
 import { FoodForm, labelFood, saveFood } from './Foods';
@@ -51,7 +51,7 @@ export function Amount({ food, init, onPick, cta, onAddUnit, named }: { food: Fo
           <UnitOptions units={units} canAdd={!!onAddUnit} />
         </select>
       </div>
-      {adding && <NewUnit onSave={saveUnit} onCancel={() => setAdding(false)} />}
+      {adding && <NewUnit food={food} onSave={saveUnit} onCancel={() => setAdding(false)} />}
       <NutLine n={it} kcal={!named} />
       <button className="btn primary" disabled={!it.grams} aria-describedby={it.grams ? undefined : why} onClick={() => onPick(it)}>{cta}</button>
       {!it.grams && <Why id={why}>כתבו כמות גדולה מאפס כדי להוסיף</Why>}
@@ -66,15 +66,27 @@ export const UnitOptions = ({ units, canAdd }: { units: Unit[]; canAdd?: boolean
 </>;
 
 // Typing a size the food doesn't list ("יחידה גדולה" = 250 ג׳); saved on the food, so it's there next time.
-export function NewUnit({ onSave, onCancel }: { onSave: (u: Unit) => Promise<unknown>; onCancel: () => void }) {
+// Few people know what a spoon of something weighs, so a known size's grams are filled from a similar
+// database food (see unitGuesser) until typed by hand.
+export function NewUnit({ food, onSave, onCancel }: { food: Food; onSave: (u: Unit) => Promise<unknown>; onCancel: () => void }) {
   const [d, setD] = useState<UnitDraft>({ k: '1', n: '', g: '' });
+  const [typed, setTyped] = useState(false);
+  const [moh, setMoh] = useState<Food[]>([]);
+  useEffect(() => { void loadMoh().then(setMoh); }, []);
+  const guessOf = useMemo(() => (moh.length ? unitGuesser(moh, food) : null), [moh, food]);
+  const guess = typed ? null : guessOf?.(d.n) ?? null;
+  const g = guess ? String(Math.round(guess.g * (Number(d.k) || 1) * 100) / 100) : '';
+  useEffect(() => { if (!typed) setD((x) => ({ ...x, g })); }, [g, typed]);
   const save = () => { const u = unitOf(d); if (u.n && u.g > 0) void onSave(u); };
   return (
     <div className="unit-row">
       <p className="muted small">{UNIT_HINT}</p>
-      <UnitInputs d={d} set={setD} autoFocus />
+      <UnitInputs d={d} set={(x) => { if (x.g !== d.g) setTyped(true); setD(x); }} autoFocus />
       <button className="btn small primary" onClick={save}>שמור</button>
       <button className="icon" aria-label="ביטול" onClick={onCancel}><Icon name="x" /></button>
+      <p className="muted small" role="status">{guess && (guess.from
+        ? `לפי ״${guess.from}״: ${d.n.trim()} = ${guess.g} ג׳${guess.more.length ? ` (${guess.more.map((u) => `${u.n} ${u.g} ג׳`).join(', ')})` : ''}. אפשר לשנות.`
+        : `בדרך כלל ${d.n.trim()} = ${guess.g} ג׳. אפשר לשנות.`)}</p>
     </div>
   );
 }

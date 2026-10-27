@@ -2,6 +2,15 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-27: a new size fills in its grams
+
+**Done:**
+- The owner added labneh from a label, then a "כף" size, and didn't know its grams. The new-size row now fills them from the same size on the closest MoH food (`unitGuesser` in `search.ts`: the food's name cut from the end until a match has that size), else a typical weight (`FALLBACK_G`), and says where they came from, with the level/heaped variants ("כף שטוחה 12 ג׳, כף גדושה 44 ג׳"). Grams typed by hand are never overwritten.
+- Search: a leading "לבנה" means labneh ("לאבנה"); it found white beans. "גבינה לבנה" is unchanged.
+- Tests: `search.test.ts` (labneh's spoon, a typical teaspoon), `e2e/screens.mjs` (a known size fills and clears its grams).
+
+**Next:** MoH lists labneh's plain "כף" at 40 g, almost a heaped one (44 g); the hint shows both so the owner can pick.
+
 ## 2026-10-27: water and the quick add above the macros
 
 **Done:**
