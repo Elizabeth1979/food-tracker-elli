@@ -2,6 +2,14 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-27: "תה נענע" found whole milk
+
+**Done:**
+- The owner wrote "תה נענע" and got "חלב מלא /טבעי, 3.6% שומן, תנובה/שטראוס/יטבתה" (161 kcal a cup). Search logic, not the AI: no food has both words, so the last word was dropped and "תה" was searched; "תה" is inside "יטבתה", and milk, being a recent food, jumped above the real teas. Now a word found only inside another word comes after every whole-word match, even a recent or own food (`inside` in `searchFoods`).
+- Tests: `search.test.ts` (recent milk and an own "שוקו יטבתה" don't beat tea).
+
+**Next:** "תה נענע" picks "תה, צמחים" (right calories); mint itself isn't added. Fine for tea; worth watching for other "X Y" dishes where the dropped word matters.
+
 ## 2026-10-26: a guessed fat is offered, not added
 
 **Done:**
