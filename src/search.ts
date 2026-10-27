@@ -56,8 +56,6 @@ export function searchFoods(foods: Food[], q: string, recent: string[]) {
     if (f.source === 'moh') s += 100; // your own foods first
     if (isFFQ(f)) s += 400;
     s += name === query ? 0 : first === query || firstWords.some((w) => sameWord(w, words[0] ?? '')) ? 10 : name.startsWith(query) ? 20 : name.startsWith(words[0] ?? '') ? 30 : 50;
-    // a typed word found only inside another ("רום וקולה" for "קולה") is a weaker match
-    if (!words.every((w) => forms(w).some((x) => name.split(/[ \/]/).some((t) => t.startsWith(x))))) s += 20;
     // "ושמן קנולה" (and canola oil) counts as oil too
     s += PROCESSED.filter((w) => !words.includes(w) && (has(what, w) || has(what, 'ו' + w))).length * 15;
     s += RARE.filter((w) => !words.includes(w) && has(name, w)).length * 20;
@@ -73,7 +71,10 @@ export function searchFoods(foods: Food[], q: string, recent: string[]) {
   // With nothing typed the list is "recent": newest first, nothing else counts.
   if (!words.length) return recent.flatMap((id) => foods.find((f) => f.id === id && !f.hidden) ?? []).slice(0, 60);
   const hits = foods.filter((f) => { const t = norm(f.name + ' ' + (f.nameEn ?? '')); return words.every((w) => forms(w).some((x) => t.includes(x))); });
-  return hits.filter((f) => !f.hidden).sort((a, b) => rank(a) - rank(b)).slice(0, 60);
+  // A typed word found only inside another ("רום וקולה" for "קולה", "יטבתה" for "תה") comes after every whole-word match,
+  // even a recent or own food: the owner's "תה נענע" got milk ("…תנובה/שטראוס/יטבתה"), which is logged often.
+  const inside = (f: Food) => (words.every((w) => forms(w).some((x) => norm(f.name).split(/[ \/]/).some((t) => t.startsWith(x)))) ? 0 : 1);
+  return hits.filter((f) => !f.hidden).sort((a, b) => inside(a) - inside(b) || rank(a) - rank(b)).slice(0, 60);
 }
 
 // ---------- free text: "יוגורט 150 גרם, 10 ענבים, כף חמאת בוטנים" ----------

@@ -66,6 +66,13 @@ test('recent and own foods come first, hidden ones never', () => {
   assert.notEqual(first('ענבים', moh.map((f) => (f.id === grapes[0].id ? { ...f, hidden: true } : f))), grapes[0].name);
 });
 
+test('a word found only inside another never beats a whole-word match, even a recent or own food', () => {
+  // the owner's "תה נענע" got whole milk: "תה" is inside "יטבתה", and milk is logged often
+  const milk = moh.find((f) => f.name.startsWith('חלב מלא /טבעי'))!;
+  assert.match(matchFoods(moh, 'תה נענע', [milk.id])[0].name, /^תה/);
+  assert.match(first('תה', [...moh, own('mine', 'שוקו יטבתה')]), /^תה/);
+});
+
 test('an empty search lists recent foods, newest first', () => {
   const ids = [moh[5].id, moh[1].id];
   assert.deepEqual(searchFoods(moh, '', ids).map((f) => f.id), ids);
