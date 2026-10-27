@@ -255,14 +255,14 @@ function MicroInfo({ m, from, more, onClose }: { m: MicroAmount; from: { items: 
   );
 }
 
-// The day's water against its goal, a glass at a time, with the same look as the macro rows above it.
+// The day's water against its goal, a glass at a time; the drop sets it apart from the foods and macros.
 const liters = (ml: number) => (ml / 1000).toLocaleString('he-IL', { maximumFractionDigits: 2 });
 export function WaterLine({ ml, onAdd, onRemove }: { ml: number; onAdd: () => void; onRemove?: () => void }) {
   const done = ml >= WATER_GOAL_ML;
   return (
     <div className="legend-row" role="group" aria-label="מים">
       <div className="legend-line">
-        <span className="grow">מים{done && <span className="ok"> ✓ הושג</span>}</span>
+        <span className="grow"><Icon name="droplet" />מים{done && <span className="ok"> ✓ הושג</span>}</span>
         <span role="status"><b>{liters(ml)}</b><span className="muted"> / {liters(WATER_GOAL_ML)} ליטר</span></span>
         <button className="icon" aria-label="פחות כוס מים" disabled={!onRemove} onClick={onRemove}><Icon name="minus" /></button>
         <button className="icon" aria-label="עוד כוס מים" onClick={onAdd}><Icon name="plus" /></button>
