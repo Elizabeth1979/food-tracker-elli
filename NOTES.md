@@ -2,6 +2,14 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-27: regular spaghetti, and no olive oil guess on a sauce that has it
+
+**Done:**
+- The owner's spaghetti went to "ספגטי, מחיטה מלאה" (whole wheat): it's the database's only "ספגטי", so the AI had no other choice. Now a pasta shape (ספגטי, פנה, פוזילי, מקרוני) also finds plain "פסטה", whole grain comes only when typed, "פסטה" alone is plain cooked pasta (`STAPLES`), cooked-without-oil leads when "מבושל" is typed, and "פסטה מבושלת" no longer gets dry pasta (`searchFoods`).
+- Her bolognese was "רוטב בולונז עם שמן זית", and the list still offered "ניחוש: אולי היה גם שמן זית". A guessed fat is now hidden when a picked food already names a fat (`hasFat`; "ללא תוספת שמן" doesn't count). Change the sauce to one without oil and the guess comes back.
+- She found the oil guess too wordy: it's now one line (the guess, with its ✕), the "הוסף" button, then the "למה" link.
+- Tests: `search.test.ts` (spaghetti, `hasFat`), screen test (spaghetti bolognese: plain pasta, no oil guess, guess back with a sauce without oil).
+
 ## 2026-10-27: no buttons while a photo is read
 
 **Done:**

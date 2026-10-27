@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Food } from './db';
-import { GRAMS, candidatesFor, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, matchMealWith, repeatOf, sameFood, searchFoods, splitAnd, unitFor, unitGuesser } from './search.ts';
+import { GRAMS, candidatesFor, hasFat, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, matchMealWith, repeatOf, sameFood, searchFoods, splitAnd, unitFor, unitGuesser } from './search.ts';
 
 const moh: Food[] = JSON.parse(readFileSync(new URL('../public/foods/moh.json', import.meta.url), 'utf8'));
 const first = (q: string, foods = moh, recent: string[] = []) => searchFoods(foods, q, recent)[0]?.name ?? '';
@@ -159,6 +159,22 @@ test('star fruit: "כוכבית" and a photo\'s "כוכבית (קרמבולה)" 
   assert.match(first('כוכבית'), /^קרמבולה, טרי/);
   assert.match(matchFoods(moh, 'כוכבית (קרמבולה)', [])[0].name, /^קרמבולה, טרי/);
   assert.match(matchFoods(moh, 'זוקיני (קישוא)', [])[0].name, /^קישואים/); // any such pair: the name the database knows
+});
+
+test('the owner\'s spaghetti: plain cooked pasta, not whole wheat (the only "ספגטי" in the database)', () => {
+  assert.match(matchFoods(moh, 'ספגטי מבושל', [])[0].name, /^אטריות\/פסטה, חיטה, מבושלות, עם מלח, ללא תוספת שמן/);
+  assert.match(first('פסטה'), /^אטריות\/פסטה, חיטה, מבושלות, עם מלח, ללא תוספת שמן/); // not with cheese and ketchup
+  assert.match(matchFoods(moh, 'פסטה מבושלת', [])[0].name, /מבושלות, עם מלח/); // not dry ("לא מבושלות")
+  assert.match(matchFoods(moh, 'ספגטי מחיטה מלאה', [])[0].name, /^ספגטי, מחיטה מלאה/); // typed, so found
+  assert.match(first('ספגטי בולונז'), /^ספגטי בולונז/); // a spaghetti dish still wins
+});
+
+test('a guessed fat a picked food already has is a double: the owner\'s bolognese with olive oil', () => {
+  assert.ok(hasFat('רוטב בולונז עם שמן זית', 'שמן זית'));
+  assert.ok(hasFat('רוטב בולונז עם שמן קנולה', 'שמן זית')); // any oil
+  assert.ok(hasFat('אטריות/פסטה, חיטה, מבושלות בחמאה', 'חמאה'));
+  assert.ok(!hasFat('אטריות/פסטה, חיטה, מבושלות, עם מלח, ללא תוספת שמן בבישול', 'שמן זית')); // no added oil
+  assert.ok(!hasFat('רוטב בולונז עם שמן זית', 'טחינה')); // only fats
 });
 
 test('staples find the plain everyday version', () => {

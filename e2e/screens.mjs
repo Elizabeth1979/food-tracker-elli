@@ -277,6 +277,24 @@ test('a name that means two dishes asks which, and the answer decides it; a type
   }
 });
 
+test('the owner\'s spaghetti bolognese: plain spaghetti, and no olive oil guess when the sauce has it', async () => {
+  await openAdd();
+  await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('ספגטי בולונז');
+  await button('זיהוי חכם: ״ספגטי בולונז״', dialog()).tap();
+  const foods = dialog().getByRole('combobox', { name: 'מזון' });
+  await foods.first().waitFor();
+  assert.match(await foods.first().evaluate((s) => s.selectedOptions[0].text), /^אטריות\/פסטה, חיטה, מבושלות/); // not whole wheat
+  assert.match(await foods.nth(1).evaluate((s) => s.selectedOptions[0].text), /^רוטב בולונז עם שמן/);
+  assert.equal(await dialog().getByText(/^ניחוש/).count(), 0, 'the sauce already has oil');
+  // a sauce without oil in its name brings the guess back
+  await foods.nth(1).selectOption({ label: 'חיפוש מזון אחר…' });
+  await dialog().getByRole('searchbox', { name: 'חיפוש מזון אחר' }).fill('רסק עגבניות');
+  await dialog().getByRole('button', { name: /^רסק עגבניות/ }).first().tap();
+  await dialog().getByText(/^ניחוש: אולי היה גם שמן זית/).waitFor();
+  await button('סגור', dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+});
+
 test('the same food again within half an hour asks first; no keeps it out, yes adds it', async () => {
   const before = await entries('ארוחת צהריים').count();
   await openAdd();

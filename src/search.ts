@@ -19,7 +19,7 @@ export const isFFQ = (f: { name: string }) => f.name.startsWith('FFQ');
 // "מרק תירס" a soup before a packet one ("נמס בכוס, מוכן מאבקה"),
 // and "ביצה" a hen's egg before a turkey's.
 const PROCESSED = ['מיץ', 'שמן', 'סירופ', 'בסירופ', 'משומר', 'משומרים', 'משקה', 'אבקה', 'אבקת', 'מאבקה', 'מאבקת', 'נמס', 'ממרח', 'חטיף', 'עוגיות', 'מחית', 'רוטב', 'תרכיז',
-  'מיובש', 'מיובשת', 'מיובשים', 'מוס', 'במילוי', 'ברוטב', 'מיונז', 'סוכר', 'מסוכר', 'ממותק', 'אפוי', 'מטוגן', 'מטוגנת', 'מטוגנים', 'צ יפס', 'בבלילה', 'חביתה', 'מתערובת', 'בגריל', 'צלוי', 'צלויה', 'פצפוצי'].map(norm);
+  'מיובש', 'מיובשת', 'מיובשים', 'מוס', 'במילוי', 'ברוטב', 'בחמאה', 'מיונז', 'סוכר', 'מסוכר', 'ממותק', 'אפוי', 'מטוגן', 'מטוגנת', 'מטוגנים', 'צ יפס', 'בבלילה', 'חביתה', 'מתערובת', 'בגריל', 'צלוי', 'צלויה', 'פצפוצי'].map(norm);
 const RARE = ['אם', 'תינוקות', 'הודו', 'בופאלו', 'נאקות', 'גמלים', 'כבשים', 'עזים', 'אווז', 'ברווז', 'שליו',
   // organs, odd cuts and fast food: "עוף" means the meat, not its liver, feet or a McDonald's item
   'לב', 'לבבות', 'כבד', 'טחול', 'קורקבן', 'קורקבנים', 'כליות', 'לשון', 'מוח', 'קיבה', 'גב', 'צוואר', 'עצמות', 'רגליים',
@@ -29,15 +29,19 @@ const RARE = ['אם', 'תינוקות', 'הודו', 'בופאלו', 'נאקות'
 const SAME: Record<string, string> = { מעוך: 'פירה', מעוכים: 'פירה', מעוכה: 'פירה', חלבונים: 'ביצה חלבון', כוכבית: 'קרמבולה' };
 // Spellings that only mean the food as the first word: "לבנה" is "לאבנה" (labneh), but "גבינה לבנה" is white cheese.
 const FIRST: Record<string, string> = { לבנה: 'לאבנה' };
+// Pasta shapes the database mostly lists as plain "פסטה": "ספגטי" alone finds only a whole wheat one.
+const PASTA = ['ספגטי', 'פנה', 'פוזילי', 'מקרוני'];
+// Whole grain only when typed: "ספגטי מבושל" is the regular one.
+const WHOLE = ['מלא', 'מלאה', 'מלאים', 'מלאות'];
 const FRESH = ['טרי', 'טריה', 'טריים', 'טריות', 'רגיל'].map(norm);
 // Everyday staples whose plain entry loses on name length alone: "פיתה" means a regular pita, not a toasted one,
-// "לחמניה" a white roll, not an anise one, and "שניצל" a fried chicken breast one, not spinach.
-const STAPLES: Record<string, string> = { פיתה: 'moh-1946', לחמניה: 'moh-10124', שניצל: 'moh-818' };
+// "לחמניה" a white roll, not an anise one, "שניצל" a fried chicken breast one, not spinach, and "פסטה" plain cooked, not with cheese.
+const STAPLES: Record<string, string> = { פיתה: 'moh-1946', פסטה: 'moh-8552', לחמניה: 'moh-10124', שניצל: 'moh-818' };
 // "ביצים" should find "ביצה", "עגבניות" "עגבניה": also accept a rough singular of Hebrew plurals.
 // A singular can end in a final letter: "לימונים", "חלבוני ביצה" find "לימון", "חלבון" (and "ביצים" still "ביצ…").
 const FINAL: Record<string, string> = { כ: 'ך', מ: 'ם', נ: 'ן', פ: 'ף', צ: 'ץ' };
 const cut = (w: string, n: number) => { const s = w.slice(0, -n); return FINAL[s.at(-1)!] ? [s, s.slice(0, -1) + FINAL[s.at(-1)!]] : [s]; };
-const forms = (w: string) => (w.length < 5 ? [w] : w.endsWith('ים') ? [w, ...cut(w, 2)] : w.endsWith('ות') ? [w, w.slice(0, -2) + 'ה', ...cut(w, 2)] : w.endsWith('י') ? [w, ...cut(w, 1)] : [w]);
+const forms = (w: string): string[] => (PASTA.includes(w) ? [w, 'פסטה'] : w.length < 5 ? [w] : w.endsWith('ים') ? [w, ...cut(w, 2)] : w.endsWith('ות') ? [w, w.slice(0, -2) + 'ה', ...cut(w, 2)] : w.endsWith('י') ? [w, ...cut(w, 1)] : [w]);
 const sameWord = (a: string, w: string) => forms(w).some((x) => a === x || (x !== w && a.startsWith(x) && a.length <= x.length + 1));
 
 export function searchFoods(foods: Food[], q: string, recent: string[]) {
@@ -61,9 +65,14 @@ export function searchFoods(foods: Food[], q: string, recent: string[]) {
     // "ושמן קנולה" (and canola oil) counts as oil too
     s += PROCESSED.filter((w) => !words.includes(w) && (has(what, w) || has(what, 'ו' + w))).length * 15;
     s += RARE.filter((w) => !words.includes(w) && has(name, w)).length * 20;
-    if (has(name, 'לא מבושל') && !words.includes('מבושל')) s += 10;
-    // a typed word the name negates: "אורז מבושל" is not "אורז, לבן, לא מבושל" (365 kcal, not 130)
-    if (!words.includes('לא')) s += words.filter((w) => has(name, 'לא ' + w)).length * 40;
+    if (WHOLE.some((w) => has(name, w)) && !words.some((w) => WHOLE.includes(w))) s += 15;
+    // raw ("לא מבושלות") a little lower, and much lower when cooked was typed in any form:
+    // "אורז מבושל" is not "אורז, לבן, לא מבושל" (365 kcal, not 130), "פסטה מבושלת" not dry pasta
+    const cooked = words.some((w) => w.startsWith('מבושל'));
+    if (cooked && (has(name, 'ללא תוספת שמן') || has(name, 'ללא תוספת שומן'))) s -= 1; // cooked plain, before "בשמן סויה"
+    if (/(^| )לא מבושל/.test(name)) s += cooked ? 40 : 10;
+    // any other typed word the name negates
+    if (!words.includes('לא')) s += words.filter((w) => !w.startsWith('מבושל') && has(name, 'לא ' + w)).length * 40;
     if ((has(first, 'עם') || has(first, 'או')) && !words.includes('עם')) s += 10; // mixed dishes: "אורז עם בצל"
     // fresh produce: exactly what was typed ("גזר, טרי") before a longer name that starts with it ("גזר לבן", parsnip)
     if (FRESH.some((w) => has(name, w))) s -= forms(query).includes(first) ? 4 : 3;
@@ -77,6 +86,14 @@ export function searchFoods(foods: Food[], q: string, recent: string[]) {
   // even a recent or own food: the owner's "תה נענע" got milk ("…תנובה/שטראוס/יטבתה"), which is logged often.
   const inside = (f: Food) => (words.every((w) => forms(w).some((x) => norm(f.name).split(/[ \/]/).some((t) => t.startsWith(x)))) ? 0 : 1);
   return hits.filter((f) => !f.hidden).sort((a, b) => inside(a) - inside(b) || rank(a) - rank(b)).slice(0, 60);
+}
+
+// A guessed fat is a double when a picked food already has it: the owner's "רוטב בולונז עם שמן זית" was offered olive oil.
+// Any oil counts for any oil; "ללא תוספת שמן" (no added oil) doesn't.
+const FATS = ['שמן', 'חמאה', 'מרגרינה'];
+export function hasFat(name: string, fat: string) {
+  const w = norm(fat).split(' ')[0];
+  return FATS.includes(w) && new RegExp(`(^| )[בו]?${w}( |$)`).test(norm(name).replace(/ללא( תוספת)? \S+/g, ''));
 }
 
 // ---------- free text: "יוגורט 150 גרם, 10 ענבים, כף חמאת בוטנים" ----------

@@ -1,6 +1,6 @@
 import { Fragment, useId, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, dishItem, itemFor, matchFoods, parseLine, searchFoods, splitAnd, sum, unitFor, unitsOf, type Food, type Item, type Parsed, type Unit } from './lib';
+import { GRAMS, dishItem, hasFat, itemFor, matchFoods, parseLine, searchFoods, splitAnd, sum, unitFor, unitsOf, type Food, type Item, type Parsed, type Unit } from './lib';
 import { AiTag, Modal, Why } from './ui';
 import { FoodForm } from './Foods';
 import { NewUnit, NutLine, UnitOptions, unitSaver } from './AddDialog';
@@ -48,6 +48,8 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
   const items = picked.flatMap((x, i) => (!x.dish ? [x.it]
     : picked.findIndex((y) => y.dish === x.dish) === i ? [dishItem(x.dish, picked.filter((y) => y.dish === x.dish).map((y) => y.it))] : []));
   const missing = rows.filter((r) => !r.food && !r.offer).length;
+  // An offered fat that a picked food already has isn't shown: it would be counted twice
+  const double = (r: Row) => r.offer && rows.some((x) => x.food && !x.offer && hasFat(x.food.name, r.p.query));
 
   if (creating)
     return (
@@ -63,6 +65,7 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
     <div className="review">
       {!rows.length && <p className="muted">לא זוהו מזונות. נסו לכתוב למשל ״2 ביצים, פרוסת לחם״.</p>}
       {rows.map((r, n) => {
+        if (double(r)) return null;
         const units = r.food ? unitsOf(r.food) : [];
         if (r.food && !units.some((u) => u.n === r.unit.n)) units.push(r.unit); // a typical size the food doesn't list ("פרוסה" of apple)
         const it = r.food && itemFor(r.food, Number(r.qty) || 0, r.unit);
@@ -73,13 +76,10 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
             {dish}
             <div className="review-row">
               <div className="amount-row">
-                <small className="muted grow">״{r.p.text}״</small>
+                <small className="muted grow">{r.offer ? `ניחוש: אולי היה גם ${r.p.query}? בדרך כלל לא רואים אותו.` : `״${r.p.text}״`}</small>
                 <button className="icon del" aria-label={`הסר: ${r.p.text}`} onClick={() => setRows(rows.filter((x) => x.id !== r.id))}><Icon name="x" /></button>
               </div>
-              {r.p.hidden && <>
-                <p className="muted small">{r.offer ? `ניחוש: אולי היה גם ${r.p.query}, שלא רואים ולא נכתב. היה? הוסיפו.` : 'ניחוש שהוספתם: תקנו את הכמות לפי מה שהיה.'}</p>
-                <ArticleLink slug="4-photos">למה תמונה מפספסת שמן?</ArticleLink>
-              </>}
+              {r.p.hidden && !r.offer && <p className="muted small">ניחוש שהוספתם: תקנו את הכמות לפי מה שהיה.</p>}
               {r.offer ? (
                 <button className="btn" onClick={() => set(r.id, { offer: false })}><Icon name="plus" />הוסף: {r.p.text}</button>
               ) : r.q !== undefined ? (
@@ -115,6 +115,7 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
                   <b className="nowrap">{it!.kcal} קק״ל</b>
                 </div>
               )}
+              {r.p.hidden && <ArticleLink slug="4-photos">למה תמונה מפספסת שמן?</ArticleLink>}
               {r.food && r.adding && <NewUnit food={r.food} onCancel={() => set(r.id, { adding: false })} onSave={(u) => saveUnit(r, u)} />}
             </div>
           </Fragment>
