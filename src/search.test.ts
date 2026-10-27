@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Food } from './db';
-import { GRAMS, candidatesFor, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, matchMealWith, repeatOf, sameFood, searchFoods, splitAnd, unitFor } from './search.ts';
+import { GRAMS, candidatesFor, isFFQ, kcalOff, matchFoods, parseLine, pickedParsed, matchMealWith, repeatOf, sameFood, searchFoods, splitAnd, unitFor, unitGuesser } from './search.ts';
 
 const moh: Food[] = JSON.parse(readFileSync(new URL('../public/foods/moh.json', import.meta.url), 'utf8'));
 const first = (q: string, foods = moh, recent: string[] = []) => searchFoods(foods, q, recent)[0]?.name ?? '';
@@ -244,4 +244,18 @@ test('the same food logged in the last half hour is a repeat', () => {
   assert.equal(repeatOf(logged, [{ foodId: 'moh-3', name: 'מרק תירס' }], now), null); // a food isn't a dish of the same name
   assert.equal(repeatOf(logged, [{ foodId: 'moh-2', name: 'ענבים' }], now), null);
   assert.equal(repeatOf(logged.slice(0, 1), [{ foodId: 'moh-1', name: 'עוגת שוקולד' }], now), null); // 40 minutes ago
+});
+
+test('a new size guesses its weight from a similar database food', () => {
+  // the owner added labneh from a label and didn't know what a "כף" of it weighs
+  assert.match(first('לבנה'), /^לאבנה/); // not white beans; "גבינה לבנה" is still white cheese
+  assert.match(first('גבינה לבנה'), /^גבינה לבנה/);
+  const labneh = unitGuesser(moh, own('mine-1', 'לבנה 5% תנובה'));
+  const spoon = labneh('כף')!;
+  assert.match(spoon.from ?? '', /^לאבנה/);
+  assert.equal(spoon.g, 40);
+  assert.deepEqual(spoon.more.map((u) => u.n), ['כף שטוחה', 'כף גדושה']);
+  assert.equal(labneh('כף שטוחה')!.g, 12);
+  assert.equal(unitGuesser(moh, own('mine-2', 'קקטוס מוזר'))('כפית')!.g, 5); // nothing similar: a typical teaspoon
+  assert.equal(labneh('ענק'), null);
 });

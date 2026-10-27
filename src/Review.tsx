@@ -115,7 +115,7 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
                   <b className="nowrap">{it!.kcal} קק״ל</b>
                 </div>
               )}
-              {r.food && r.adding && <NewUnit onCancel={() => set(r.id, { adding: false })} onSave={(u) => saveUnit(r, u)} />}
+              {r.food && r.adding && <NewUnit food={r.food} onCancel={() => set(r.id, { adding: false })} onSave={(u) => saveUnit(r, u)} />}
             </div>
           </Fragment>
         );

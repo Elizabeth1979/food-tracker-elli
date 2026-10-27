@@ -27,6 +27,8 @@ const RARE = ['אם', 'תינוקות', 'הודו', 'בופאלו', 'נאקות'
 // Words a photo or a person uses that the database names otherwise: mashed potato is "פירה", "חלבונים" are egg whites
 // ("חלבון" alone is protein too), and star fruit ("כוכבית") is "קרמבולה".
 const SAME: Record<string, string> = { מעוך: 'פירה', מעוכים: 'פירה', מעוכה: 'פירה', חלבונים: 'ביצה חלבון', כוכבית: 'קרמבולה' };
+// Spellings that only mean the food as the first word: "לבנה" is "לאבנה" (labneh), but "גבינה לבנה" is white cheese.
+const FIRST: Record<string, string> = { לבנה: 'לאבנה' };
 const FRESH = ['טרי', 'טריה', 'טריים', 'טריות', 'רגיל'].map(norm);
 // Everyday staples whose plain entry loses on name length alone: "פיתה" means a regular pita, not a toasted one,
 // "לחמניה" a white roll, not an anise one, and "שניצל" a fried chicken breast one, not spinach.
@@ -39,7 +41,7 @@ const forms = (w: string) => (w.length < 5 ? [w] : w.endsWith('ים') ? [w, ...c
 const sameWord = (a: string, w: string) => forms(w).some((x) => a === x || (x !== w && a.startsWith(x) && a.length <= x.length + 1));
 
 export function searchFoods(foods: Food[], q: string, recent: string[]) {
-  const words = norm(q).split(' ').filter(Boolean).flatMap((w) => (SAME[w] ?? w).split(' '));
+  const words = norm(q).split(' ').filter(Boolean).flatMap((w, i) => (SAME[w] ?? (i ? w : FIRST[w] ?? w)).split(' '));
   const query = words.join(' ');
   const has = (text: string, phrase: string) => ` ${text} `.includes(` ${phrase} `);
   const rank = (f: Food) => {
@@ -167,6 +169,26 @@ function unitByName(food: Food, p: Pick<Parsed, 'qty' | 'unit'>): { qty: number;
   if (p.qty != null && (p.qty >= 20 || !piece)) return { qty: p.qty, unit: grams };
   if (piece) return { qty: p.qty ?? 1, unit: piece };
   return { qty: food.servingG, unit: grams };
+}
+
+// A new size's likely weight, for someone who doesn't know it: the same size on the closest database food
+// (a "כף" of the owner's labneh from a label weighs what MoH's labneh "כף" does), else a typical one.
+// Closest: the food's name cut from the end until a match has that size. `more`: that food's other sizes
+// of the same kind ("כף שטוחה", "כף גדושה"), since a "כף" can be level or heaped.
+// Searching is the slow part, so it runs once per food and the returned function runs per letter typed.
+export function unitGuesser(foods: Food[], food: Food) {
+  const words = norm(food.name.split(',')[0]).split(' ');
+  const similar = [...new Set(words.flatMap((_, i) => searchFoods(foods, words.slice(0, words.length - i).join(' '), [])))].filter((f) => f.id !== food.id);
+  const key = (n: string) => UNITS[norm(n)] ?? norm(n);
+  return (name: string): { g: number; from?: string; more: Unit[] } | null => {
+    const k = key(name);
+    if (!k || k === GRAMS) return null;
+    for (const f of similar) {
+      const u = unitsOf(f).find((x) => key(x.n) === k);
+      if (u) return { g: u.g, from: f.name, more: unitsOf(f).filter((x) => x !== u && norm(x.n).startsWith(k + ' ')) };
+    }
+    return FALLBACK_G[k] ? { g: FALLBACK_G[k], more: [] } : null;
+  };
 }
 
 // Best matches for a typed name; retries without a leading "ו" ("וגרנולה"), since names like "ויטמין" start with one.
