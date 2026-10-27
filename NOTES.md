@@ -2,6 +2,13 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-27: water and the quick add above the macros
+
+**Done:**
+- The owner: the 10-26 move (macros up, quick add down) wasn't what she meant. Day summary order now: ring and "הוספה", water, the quick add (and "מה נכנס"), then what the day gave: calories eaten, macros, vitamins.
+- Water has a drop icon, so it reads apart from the foods and the macros.
+- Screen test: water above the quick add, the quick add above the macros.
+
 ## 2026-10-27: "תה נענע" found whole milk
 
 **Done:**

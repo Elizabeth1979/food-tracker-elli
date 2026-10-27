@@ -521,6 +521,11 @@ test('what fits in what\'s left: today only, the usual things that fit, one tap 
 
 test('water: a glass at a time on its own line, not under a meal', async () => {
   const water = page.getByRole('group', { name: 'מים' });
+  // the owner's order: water, then the quick add, then what the day gave (the macros)
+  const top = async (l) => (await l.boundingBox()).y;
+  const quick = page.getByRole('region', { name: 'הוספה מהירה' });
+  assert.ok(await top(water) < await top(quick), 'water above the quick add');
+  assert.ok(await top(quick) < await top(page.getByText('חלבון', { exact: true }).first()), 'the quick add above the macros');
   const amount = () => water.getByRole('status').innerText();
   assert.match(await amount(), /^0 \/ 2 ליטר$/);
   assert.ok(await button('פחות כוס מים', water).isDisabled()); // nothing to take back yet
@@ -538,7 +543,6 @@ test('water: a glass at a time on its own line, not under a meal', async () => {
   await dialog().waitFor({ state: 'detached' });
   assert.equal(await entries('ארוחת צהריים').count(), 0);
   await button('יום קודם').tap(); await button('יום הבא').tap(); // the quick add reloads the month with the water
-  const quick = page.getByRole('region', { name: 'הוספה מהירה' });
   await quick.getByRole('listitem').first().waitFor();
   assert.equal(await button(/^מים/, quick).count(), 0);
   await openAdd();
