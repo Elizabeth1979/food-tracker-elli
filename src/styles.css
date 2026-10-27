@@ -191,7 +191,7 @@ legend + .seg button { white-space: normal; }
 .row.on .mark { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .row.pick.on .kcal { color: var(--text); }
 .usual h3 { font-size: 15px; margin-top: 12px; }
-.usual .grow .i { margin-inline-end: 6px; color: var(--accent); } /* a saved meal's mark */
+.usual .grow .i, .legend-line .grow .i { margin-inline-end: 6px; color: var(--accent); } /* a saved meal's mark, water's drop */
 .modal > footer { display: grid; position: relative; padding: 4px 16px 16px; box-shadow: 0 -12px 16px var(--bg); } /* fades the last row: there's more to scroll */
 .amount { display: flex; flex-direction: column; gap: 12px; }
 .amount > header { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
