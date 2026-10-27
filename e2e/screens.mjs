@@ -136,13 +136,12 @@ test('in the evening, a photo goes to the review list', async () => {
   // the photo waits for an optional note (what a photo can't tell), then it's read
   await dialog().getByRole('textbox', { name: /^הערה/ }).fill('גבינה בולגרית מגורדת');
   await button('זהה מזונות', dialog()).tap();
-  // while it's being read: a visible status, and the rest locked with the reason given
+  // while it's being read: a visible status, and no buttons to press (the owner found them confusing)
   await dialog().getByRole('status').filter({ hasText: 'מזהה מזונות בתמונה' }).waitFor();
   // the note stays in view, not the empty box's example
   assert.equal(await dialog().getByRole('textbox', { name: /^מה אכלת/ }).inputValue(), 'גבינה בולגרית מגורדת');
-  const next = button('המשך לבדיקה', dialog());
-  assert.ok(await next.isDisabled());
-  assert.equal(await page.locator(`#${await next.getAttribute('aria-describedby')}`.replace(/:/g, '\\:')).innerText(), 'אפשר להמשיך כשהזיהוי יסתיים');
+  assert.equal(await button('המשך לבדיקה', dialog()).count(), 0);
+  assert.equal(await button(/זיהוי חכם/, dialog()).count(), 0);
   await dialog().getByRole('combobox', { name: 'מזון' }).first().waitFor();
 });
 

@@ -2,6 +2,12 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-27: no buttons while a photo is read
+
+**Done:**
+- The owner: while a photo was being read, "זיהוי חכם" and "המשך לבדיקה" still showed (locked), which was confusing. Now only the spinner and the note (locked) show; the buttons come back when it's done (`TextOrPhoto` in `AddDialog.tsx`).
+- Screen test: no buttons while the photo is read.
+
 ## 2026-10-27: a new size fills in its grams
 
 **Done:**
