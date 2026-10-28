@@ -3,7 +3,7 @@ import { goalsLeft, goalsOf, type Goals } from './goals';
 import type { Ctx } from './App';
 import { MEALS, WATER, pickItem, addDays, addEntries, amountLabel, client, deletePhoto, movePhoto, fmtDate, isDish, isWater, listPhotos, loadEntries, mealNow, sum, today, type Entry, type MealKey, type MealPhoto } from './lib';
 import { AiTag, DayGoals, GoalsInfo, Group, MicroGoals, Modal, Ring, WaterLine, confirmIt, promptIt } from './ui';
-import { AddDialog, EntryDialog, QuickAdd } from './AddDialog';
+import { AddDialog, EntryDialog, Pick, QuickAdd } from './AddDialog';
 import { Icon } from './icons';
 import { ArticleLink } from './Guide';
 
@@ -89,12 +89,24 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
     setPhotos((cur) => cur.filter((x) => x.path !== p.path));
     setViewing(null);
   };
-  const saveMeal = async (meal: MealKey) => {
-    const items = food.filter((e) => e.meal === meal).map(pickItem);
-    const name = items.length && (await promptIt('שמירה כארוחה', 'שם הארוחה', 'שמור'));
+  // A meal is rarely eaten the same way twice, so a saved meal is the foods you pick from it, not all of it.
+  const [picking, setPicking] = useState<{ meal: MealKey; ids: string[] } | null>(null);
+  useEffect(() => setPicking(null), [date]);
+  // Focus follows the mode: into the first food when picking starts, back to its button when it ends.
+  const lastPicked = useRef<MealKey | null>(null);
+  useEffect(() => {
+    const key = picking?.meal ?? lastPicked.current;
+    lastPicked.current = picking?.meal ?? null;
+    if (key) document.querySelector<HTMLElement>(`#meal-${key} ${picking ? '[aria-pressed]' : 'footer button'}`)?.focus();
+  }, [picking?.meal]);
+  const togglePick = (id: string) => setPicking((p) => p && { ...p, ids: p.ids.includes(id) ? p.ids.filter((x) => x !== id) : [...p.ids, id] });
+  const saveMeal = async () => {
+    const items = food.filter((e) => picking!.ids.includes(e.id)).map(pickItem);
+    const name = await promptIt('שמירה כארוחה', 'שם הארוחה', 'שמור');
     if (!name) return;
     const { data } = await client.models.SavedMeal.create({ name, items: JSON.stringify(items) });
     ctx.setMeals([...ctx.meals, data!]);
+    setPicking(null);
     setMsg(`"${name}" נשמרה`);
   };
 
@@ -156,15 +168,22 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
               </h3>
             </header>
             <div id={`meal-${m.key}`} hidden={!open}>
-              {es.map((e) => (
-                <div key={e.id} className="row" role="button" tabIndex={0} onClick={() => setEditing(e)}>
-                  <div className="grow"><div>{e.name}</div><small className="muted">{isDish(e) && <AiTag />}{amountLabel(e)}</small></div>
-                  <b>{e.kcal}</b>
-                  <button className="icon del" aria-label={`מחק: ${e.name}`} onClick={(ev) => { ev.stopPropagation(); remove(e); }}><Icon name="x" /></button>
-                </div>
-              ))}
-              {/* a saved meal is foods that go together; a single food is already one tap in "הרגילים שלך" */}
-              {es.length > 1 ? <footer><button onClick={() => saveMeal(m.key)}><Icon name="star" />שמור כארוחה</button></footer> : !es.length && <p className="empty">עוד לא נרשם כלום</p>}
+              {picking?.meal === m.key
+                ? es.map((e) => <Pick key={e.id} name={e.name} detail={amountLabel(e)} kcal={e.kcal} on={picking.ids.includes(e.id)} onClick={() => togglePick(e.id)} />)
+                : es.map((e) => (
+                  <div key={e.id} className="row" role="button" tabIndex={0} onClick={() => setEditing(e)}>
+                    <div className="grow"><div>{e.name}</div><small className="muted">{isDish(e) && <AiTag />}{amountLabel(e)}</small></div>
+                    <b>{e.kcal}</b>
+                    <button className="icon del" aria-label={`מחק: ${e.name}`} onClick={(ev) => { ev.stopPropagation(); remove(e); }}><Icon name="x" /></button>
+                  </div>
+                ))}
+              {/* a saved meal is foods that go together (two or more); a single food is already one tap in "הרגילים שלך" */}
+              {picking?.meal === m.key
+                ? <footer>
+                    <button disabled={picking.ids.length < 2} onClick={saveMeal}><Icon name="star" />שמור כארוחה ({picking.ids.length})</button>
+                    <button onClick={() => setPicking(null)}>ביטול</button>
+                  </footer>
+                : es.length > 1 ? <footer><button onClick={() => setPicking({ meal: m.key, ids: [] })}><Icon name="star" />בחירה לשמירה כארוחה</button></footer> : !es.length && <p className="empty">עוד לא נרשם כלום</p>}
             </div>
           </section>
         );
