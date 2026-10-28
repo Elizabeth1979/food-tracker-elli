@@ -2,6 +2,12 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-10-28: save a meal from the foods you pick
+
+**Done:**
+- The owner: "שמור כארוחה" saved the whole meal, but she rarely eats the same full meal twice. The meal's button is now "בחירה לשמירה כארוחה": each food turns into a toggle (the add window's `Pick` row, now shared), nothing picked at first; "שמור כארוחה (N)" saves only the picked foods and needs at least two; "ביטול" goes back. Focus moves to the first food when picking starts and back to the button when it ends (`Day.tsx`).
+- Screen test: picking replaces the delete buttons, one food can't be saved, cancel and focus, a fresh pick each time, then the six dinner foods saved by picking.
+
 ## 2026-10-27: regular spaghetti, and no olive oil guess on a sauce that has it
 
 **Done:**

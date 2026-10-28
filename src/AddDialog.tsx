@@ -415,8 +415,8 @@ const MealSeg = ({ meal, onChange }: { meal: MealKey; onChange: (m: MealKey) => 
 );
 
 // A usual thing: tap adds it, tap again takes it out. With onOpen, only ＋ does that, and the name opens the amount picker.
-// A saved meal is marked with the utensils icon, named for screen readers too; a food of your own is tagged "שלי".
-function Pick({ name, detail, kcal, on, saved, mine, onClick, onOpen }: { name: string; detail?: string; kcal?: number; on: boolean; saved?: boolean; mine?: boolean; onClick: () => void; onOpen?: () => void }) {
+// A row you tap to pick or unpick. A saved meal is marked with the utensils icon, named for screen readers too; a food of your own is tagged "שלי".
+export function Pick({ name, detail, kcal, on, saved, mine, onClick, onOpen }: { name: string; detail?: string; kcal?: number; on: boolean; saved?: boolean; mine?: boolean; onClick: () => void; onOpen?: () => void }) {
   const body = <>
     <div className="grow">
       <div>{saved && <Icon name="utensils" />}{name}{saved && <span className="sr-only"> (ארוחה שמורה)</span>}</div>

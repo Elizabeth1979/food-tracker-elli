@@ -188,7 +188,7 @@ export default function Foods({ ctx, date }: { ctx: Ctx; date: string }) {
           {mine.length ? <Fold items={mine} row={foodRow} /> : <p className="muted">מזונות שתוסיפו או תערכו יופיעו כאן.</p>}
         </Group>
         <Group title={`ארוחות שמורות (${ctx.meals.length})`} action={<button className="btn small primary" onClick={() => setMealEdit('new')}><Icon name="plus" />ארוחה חדשה</button>}>
-          {ctx.meals.length ? <Fold items={ctx.meals} row={mealRow} /> : <p className="muted">צרו ארוחה כאן, או שמרו ארוחה מהיומן עם ״שמור כארוחה״.</p>}
+          {ctx.meals.length ? <Fold items={ctx.meals} row={mealRow} /> : <p className="muted">צרו ארוחה כאן, או שמרו ארוחה מהיומן עם ״בחירה לשמירה כארוחה״.</p>}
         </Group>
         <p className="muted small">שאר המזונות, ממאגר משרד הבריאות, נמצאים בחיפוש.</p>
       </>}

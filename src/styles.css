@@ -152,6 +152,7 @@ button.legend-row:focus-visible { outline: 2px solid var(--accent); outline-offs
 @media (min-width: 800px) { .toast { bottom: 96px; } }
 .meal footer { display: flex; gap: 16px; padding: 0 14px 4px; padding-inline-start: 58px; font-size: 14px; }
 .meal footer button { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); color: var(--accent); }
+.meal footer button:disabled { color: var(--muted); cursor: default; }
 .day-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* modal */

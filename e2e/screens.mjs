@@ -116,7 +116,7 @@ test('search, pick an amount, add; a fruit counts toward vitamin C', async () =>
   await button(/^סיום · נוספו 1/, dialog()).tap();
   await dialog().waitFor({ state: 'detached' });
   assert.equal(await entries('ארוחת צהריים').count(), 1); // lunchtime: filed under lunch
-  assert.equal(await button('שמור כארוחה', meal('ארוחת צהריים')).count(), 0); // one food isn't a saved meal: it's one tap in "הרגילים שלך"
+  assert.equal(await button('בחירה לשמירה כארוחה', meal('ארוחת צהריים')).count(), 0); // one food isn't a saved meal: it's one tap in "הרגילים שלך"
   assert.ok((await vitamin('ויטמין C')) > 0, 'the grapes, the day\'s only food, give vitamin C (MoH data)');
   await vitamins().getByText('ויטמינים ומינרלים שצרכת היום').tap();
 });
@@ -398,8 +398,25 @@ test('delete an entry, then undo', async () => {
   await page.waitForFunction(() => document.querySelectorAll('[aria-label^="מחק: "]').length === 6);
 });
 
-test('save a meal, then add it again in one tap', async () => {
-  await button('שמור כארוחה', meal('ארוחת ערב')).tap();
+test('save a meal from the foods you pick, then add it again in one tap', async () => {
+  const dinner = meal('ארוחת ערב');
+  const picks = dinner.locator('button[aria-pressed]'); // while picking, each food is a toggle button
+  const choose = button('בחירה לשמירה כארוחה', dinner);
+  const focused = () => page.evaluate(() => ({ pressed: document.activeElement?.getAttribute('aria-pressed'), text: document.activeElement?.textContent }));
+  await choose.tap();
+  assert.equal(await entries('ארוחת ערב').count(), 0); // picking, not deleting
+  assert.equal(await picks.count(), 6);
+  assert.equal((await focused()).pressed, 'false'); // focus moves to the first food
+  await picks.first().tap();
+  assert.equal(await picks.first().getAttribute('aria-pressed'), 'true');
+  assert.ok(await button('שמור כארוחה (1)', dinner).isDisabled()); // one food isn't a saved meal: it's one tap in "הרגילים שלך"
+  await button('ביטול', dinner).tap();
+  assert.equal(await entries('ארוחת ערב').count(), 6);
+  assert.equal((await focused()).text, 'בחירה לשמירה כארוחה'); // and back to where it started
+  await choose.tap();
+  assert.equal(await dinner.locator('button[aria-pressed="true"]').count(), 0); // a fresh pick each time
+  for (let i = 0; i < 6; i++) await picks.nth(i).tap();
+  await button('שמור כארוחה (6)', dinner).tap();
   await asked('שמירה כארוחה').getByRole('textbox', { name: 'שם הארוחה' }).fill('ערב קבוע');
   await button('שמור', asked('שמירה כארוחה')).tap();
   await page.getByText('"ערב קבוע" נשמרה').waitFor();
