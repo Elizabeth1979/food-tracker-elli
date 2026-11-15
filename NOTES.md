@@ -2,6 +2,13 @@
 
 What was done in each work session and what's next. Newest first.
 
+## 2026-11-15: a meal photo shows only on the foods logged with it
+
+**Done:**
+- The owner added a mandarin to lunch later in the day and its details showed the lunch photo. A photo belonged to the whole meal. Now its file name also lists the foods logged with it (`<meal>.<id>.<foods>.jpg`, the start of each entry id), and only those show it (`photoShows` in `lib.ts`). It goes (or moves) with the last of them, not the meal's last food. An undone delete keeps the entry's id, so its photo still shows. No database change.
+- Photos saved before this have no food list and still show on their whole meal (today's lunch photo included).
+- Screen test: a mandarin added after the photo shows none; deleting the photo's foods takes the photo while the mandarin stays.
+
 ## 2026-11-15: typing in the search shows at once
 
 **Done:**

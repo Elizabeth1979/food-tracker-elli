@@ -183,17 +183,18 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
   // Returns false when the user chose not to add it again (the same food logged in the last half hour).
   const add = async (key: string, items: Item[]) => {
     const again = repeatOf([...month ?? [], ...added].filter((e) => e.date === date), items.filter((i) => !isWater(i)));
-    if (again && !(await confirmIt(`כבר רשמת ״${head(again.name)}״ ${again.min ? `לפני ${again.min} דק׳` : 'הרגע'}`, 'הוסף שוב', 'להוסיף שוב?', false))) return false;
+    if (again && !(await confirmIt(`כבר רשמת ״${head(again.name)}״ ${again.min ? `לפני ${again.min} דק׳` : 'הרגע'}`, 'הוסף שוב', 'להוסיף שוב?', false))) return null;
     setBusy(true);
+    let es: Entry[];
     try {
       ctx.addRecent(items.flatMap((i) => (i.foodId ? [i.foodId] : [])));
-      const es = await addEntries(date, meal, items);
+      es = await addEntries(date, meal, items);
       onAdded(es);
       setDone((d) => ({ ...d, [key]: [...(d[key] ?? []), ...es] }));
     } finally { setBusy(false); }
     if (initial) onClose(); // opened on one food from the מזונות tab
     setSel(null); setWriting(false); setPhotos([]); setDescribe(''); setQ('');
-    return true;
+    return es;
   };
   const readShot = async (file: File) => {
     setErr(''); setLabelShot(file);
@@ -245,7 +246,8 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
       ) : writing ? (
         <>
           <TextOrPhoto ctx={ctx} files={photos} describe={describe} cta="הוסף" onAdd={async (items, shots) => {
-            if (await add(`w:${Date.now()}`, items)) shots.forEach((s) => void savePhoto(s, date, meal).then(onPhoto)); // a failure shows in the app's error banner
+            const es = await add(`w:${Date.now()}`, items);
+            if (es) shots.forEach((s) => void savePhoto(s, date, meal, es).then(onPhoto)); // a failure shows in the app's error banner
           }} />
         </>
       ) : (

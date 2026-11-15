@@ -1,5 +1,5 @@
 import type { IconName } from './icons';
-import { client, hasPending, listEntries, supabase, syncPending, type Food, type SavedMeal, type Weight } from './db';
+import { client, hasPending, listEntries, supabase, syncPending, type Entry, type Food, type SavedMeal, type Weight } from './db';
 import { GRAMS, json, matchMealWith, unitsOf, warmSearch, type AskPick, type Picked, type Seen, type Unit } from './search';
 
 export { client, hasPending, syncPending };
@@ -165,7 +165,8 @@ export async function addUnit(food: Food, unit: Unit): Promise<Food> {
   return { ...food, ...data, units };
 }
 
-export const addEntries = (date: string, meal: MealKey, items: Item[]) =>
+// An item can bring its own id: an undone delete comes back as the same entry, so its meal photos still show on it.
+export const addEntries = (date: string, meal: MealKey, items: (Item & { id?: string })[]) =>
   Promise.all(items.map((it) => client.models.Entry.create({ ...it, date, meal }).then((r) => r.data)));
 
 export { store } from './store';
@@ -212,22 +213,30 @@ export async function readLabel(file: File): Promise<Label> {
 
 // ---------- meal photos ----------
 // A meal photo is kept so the diary can show it: in the private Storage bucket meal-photos, at
-// <user>/<date>/<meal>.<id>.jpg (Storage policies allow only the user's own folder). The path says where it
-// belongs, so there is no table. Photos need a connection: offline, saving fails and the diary shows none.
-export type MealPhoto = { path: string; meal: MealKey; url: string };
+// <user>/<date>/<meal>.<id>.<foods>.jpg (Storage policies allow only the user's own folder). The path says where it
+// belongs, so there is no table: <foods> is the start of each id of the entries logged with it ("_" between them),
+// so a food added to the meal later doesn't show it. Older photos have no <foods> and show on the whole meal.
+// Photos need a connection: offline, saving fails and the diary shows none.
+export type MealPhoto = { path: string; meal: MealKey; url: string; foods: string[] | null };
+const shortId = (id: string) => id.slice(0, 8);
+export const photoShows = (p: MealPhoto, e: Entry) => p.meal === e.meal && (!p.foods || p.foods.includes(shortId(e.id)));
 const photos = () => supabase.storage.from('meal-photos');
 const userId = async () => (await supabase.auth.getSession()).data.session!.user.id;
 async function signed(paths: string[]): Promise<MealPhoto[]> {
   const { data, error } = await photos().createSignedUrls(paths, 3600);
   if (error) throw error;
-  return data.flatMap((d) => (d.path && d.signedUrl ? [{ path: d.path, meal: d.path.split('/')[2].split('.')[0] as MealKey, url: d.signedUrl }] : []));
+  return data.flatMap((d) => {
+    if (!d.path || !d.signedUrl) return [];
+    const [meal, , foods] = d.path.split('/')[2].split('.').slice(0, -1);
+    return [{ path: d.path, meal: meal as MealKey, url: d.signedUrl, foods: foods ? foods.split('_') : null }];
+  });
 }
 const jpegOf = async (file: File, max: number) => {
   const c = await shrunk(file, max);
   return new Promise<Blob>((ok) => c.toBlob((b) => ok(b!), 'image/jpeg', 0.8));
 };
-export async function savePhoto(file: File, date: string, meal: MealKey): Promise<MealPhoto> {
-  const path = `${await userId()}/${date}/${meal}.${crypto.randomUUID()}.jpg`;
+export async function savePhoto(file: File, date: string, meal: MealKey, foods: Entry[]): Promise<MealPhoto> {
+  const path = `${await userId()}/${date}/${meal}.${crypto.randomUUID()}.${foods.map((e) => shortId(e.id)).join('_')}.jpg`;
   const { error } = await photos().upload(path, await jpegOf(file, 1024), { contentType: 'image/jpeg' });
   if (error) throw error;
   return (await signed([path]))[0];
