@@ -1,6 +1,6 @@
 import type { IconName } from './icons';
 import { client, hasPending, listEntries, supabase, syncPending, type Food, type SavedMeal, type Weight } from './db';
-import { GRAMS, json, matchMealWith, unitsOf, type AskPick, type Picked, type Seen, type Unit } from './search';
+import { GRAMS, json, matchMealWith, unitsOf, warmSearch, type AskPick, type Picked, type Seen, type Unit } from './search';
 
 export { client, hasPending, syncPending };
 export { GRAMS, json, unitsOf, searchFoods, matchFoods, hasFat, parseLine, splitAnd, unitFor, isFFQ, kcalOff, sameFood, type Unit, type Parsed, type Question, type Seen } from './search';
@@ -141,8 +141,11 @@ export const amountLabel = (e: { grams: number; qty?: number | null; unit?: stri
 // The MoH (Tzameret) database is read from /foods/moh.json at runtime and never copied into the DB.
 // Local Food rows override MoH rows with the same id (edits, `hidden`); other local rows are the user's own foods.
 let moh: Promise<Food[]> | undefined;
+// Work for when the phone is free (Safari has no requestIdleCallback: soon after, then).
+const idle = (fn: () => void) => ('requestIdleCallback' in window ? requestIdleCallback(fn) : setTimeout(fn, 200));
 export const loadMoh = (): Promise<Food[]> =>
-  (moh ??= fetch('/foods/moh.json').then((r) => (r.ok ? r.json() : Promise.reject(new Error(`moh.json ${r.status}`)))).catch((e) => { moh = undefined; console.error(e); return []; }));
+  (moh ??= fetch('/foods/moh.json').then((r) => (r.ok ? r.json() : Promise.reject(new Error(`moh.json ${r.status}`))))
+    .then((foods: Food[]) => { idle(() => warmSearch(foods)); return foods; }).catch((e) => { moh = undefined; console.error(e); return []; }));
 
 export async function loadFoods(): Promise<Food[]> {
   const [base, { data: local }] = await Promise.all([loadMoh(), client.models.Food.list()]);

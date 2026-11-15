@@ -11,6 +11,9 @@ export const json = <T,>(x: unknown, d: T): T => (typeof x === 'string' ? JSON.p
 // Hebrew is spelled with or without an extra yod or vav, and the database has both ("לחמניה", "לחמנייה"):
 // "עגבנייה" must find "עגבניה". So both sides are matched with a single one.
 export const norm = (s: string) => s.toLowerCase().replace(/["'׳״`,.()\-]/g, ' ').replace(/יי/g, 'י').replace(/וו/g, 'ו').replace(/\s+/g, ' ').trim();
+// Food names are the same on every keystroke: normalize each once.
+const normed = new Map<string, string>();
+const normName = (s: string) => normed.get(s) ?? (normed.set(s, norm(s)), normed.get(s)!);
 // Word lists are compared with normalized text, so they're normalized too ("צוואר", "שניים").
 const normKeys = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [norm(k), v]));
 // Food Frequency Questionnaire groups: averages over several foods ("grapes or raisins"), not real foods.
@@ -44,48 +47,71 @@ const cut = (w: string, n: number) => { const s = w.slice(0, -n); return FINAL[s
 const forms = (w: string): string[] => (PASTA.includes(w) ? [w, 'פסטה'] : w.length < 5 ? [w] : w.endsWith('ים') ? [w, ...cut(w, 2)] : w.endsWith('ות') ? [w, w.slice(0, -2) + 'ה', ...cut(w, 2)] : w.endsWith('י') ? [w, ...cut(w, 1)] : [w]);
 const sameWord = (a: string, w: string) => forms(w).some((x) => a === x || (x !== w && a.startsWith(x) && a.length <= x.length + 1));
 
+// A whole word or phrase in a name padded with spaces.
+const has = (padded: string, phrase: string) => padded.includes(` ${phrase} `);
+// What a name says whatever is typed, worked out once per food: checking ~80 words in each of thousands of names
+// on every keystroke took most of a search's time.
+type Traits = { processed: string[]; rare: string[]; whole: boolean; fresh: boolean };
+const traits = new Map<string, Traits>();
+function traitsOf(name: string): Traits {
+  let t = traits.get(name);
+  if (t) return t;
+  const n = ` ${name} `;
+  // "ללא תוספת שמן" (no added oil) isn't an oil dish; "ושמן קנולה" (and canola oil) counts as oil too
+  const what = ` ${name.replace(/ללא( תוספת)? \S+/g, '')} `;
+  t = { processed: PROCESSED.filter((w) => has(what, w) || has(what, 'ו' + w)), rare: RARE.filter((w) => has(n, w)), whole: WHOLE.some((w) => has(n, w)), fresh: FRESH.some((w) => has(n, w)) };
+  traits.set(name, t);
+  return t;
+}
+
+// Fills those caches ahead (when the foods load), so the first letter typed isn't the slow one.
+export function warmSearch(foods: Food[]) {
+  for (const f of foods) { traitsOf(normName(f.name)); normName(f.name.split(',')[0]); normName(f.name + ' ' + (f.nameEn ?? '')); }
+}
+
 export function searchFoods(foods: Food[], q: string, recent: string[]) {
   const words = norm(q).split(' ').filter(Boolean).flatMap((w, i) => (SAME[w] ?? (i ? w : FIRST[w] ?? w)).split(' '));
   const query = words.join(' ');
-  const has = (text: string, phrase: string) => ` ${text} `.includes(` ${phrase} `);
   const rank = (f: Food) => {
-    const name = norm(f.name);
+    const name = normName(f.name);
     // "בשר עוף, חזה…" is chicken: a leading "בשר" (meat of) doesn't count, unless it was typed.
-    const head = norm(f.name.split(',')[0]);
+    const head = normName(f.name.split(',')[0]);
     const first = words[0] === 'בשר' ? head : head.replace(/^בשר /, '');
     // "אטריות/פסטה" is either word
     const firstWords = first.split(' ')[0].split('/');
-    // "ללא תוספת שמן" (no added oil) isn't an oil dish
-    const what = name.replace(/ללא( תוספת)? \S+/g, '');
+    const n = ` ${name} `, f1 = ` ${first} `;
+    const t = traitsOf(name);
     const r = recent.indexOf(f.id);
     let s = r >= 0 ? r - 1000 : 0;
     if (f.source === 'moh') s += 100; // your own foods first
     if (isFFQ(f)) s += 400;
     s += name === query ? 0 : first === query || firstWords.some((w) => sameWord(w, words[0] ?? '')) ? 10 : name.startsWith(query) ? 20 : name.startsWith(words[0] ?? '') ? 30 : 50;
-    // "ושמן קנולה" (and canola oil) counts as oil too
-    s += PROCESSED.filter((w) => !words.includes(w) && (has(what, w) || has(what, 'ו' + w))).length * 15;
-    s += RARE.filter((w) => !words.includes(w) && has(name, w)).length * 20;
-    if (WHOLE.some((w) => has(name, w)) && !words.some((w) => WHOLE.includes(w))) s += 15;
+    s += t.processed.filter((w) => !words.includes(w)).length * 15;
+    s += t.rare.filter((w) => !words.includes(w)).length * 20;
+    if (t.whole && !words.some((w) => WHOLE.includes(w))) s += 15;
     // raw ("לא מבושלות") a little lower, and much lower when cooked was typed in any form:
     // "אורז מבושל" is not "אורז, לבן, לא מבושל" (365 kcal, not 130), "פסטה מבושלת" not dry pasta
     const cooked = words.some((w) => w.startsWith('מבושל'));
-    if (cooked && (has(name, 'ללא תוספת שמן') || has(name, 'ללא תוספת שומן'))) s -= 1; // cooked plain, before "בשמן סויה"
+    if (cooked && (has(n, 'ללא תוספת שמן') || has(n, 'ללא תוספת שומן'))) s -= 1; // cooked plain, before "בשמן סויה"
     if (/(^| )לא מבושל/.test(name)) s += cooked ? 40 : 10;
     // any other typed word the name negates
-    if (!words.includes('לא')) s += words.filter((w) => !w.startsWith('מבושל') && has(name, 'לא ' + w)).length * 40;
-    if ((has(first, 'עם') || has(first, 'או')) && !words.includes('עם')) s += 10; // mixed dishes: "אורז עם בצל"
+    if (!words.includes('לא')) s += words.filter((w) => !w.startsWith('מבושל') && has(n, 'לא ' + w)).length * 40;
+    if ((has(f1, 'עם') || has(f1, 'או')) && !words.includes('עם')) s += 10; // mixed dishes: "אורז עם בצל"
     // fresh produce: exactly what was typed ("גזר, טרי") before a longer name that starts with it ("גזר לבן", parsnip)
-    if (FRESH.some((w) => has(name, w))) s -= forms(query).includes(first) ? 4 : 3;
+    if (t.fresh) s -= forms(query).includes(first) ? 4 : 3;
     if (forms(query).some((w) => STAPLES[w] === f.id)) s -= 20;
     return s + f.name.length / 100;
   };
   // With nothing typed the list is "recent": newest first, nothing else counts.
   if (!words.length) return recent.flatMap((id) => foods.find((f) => f.id === id && !f.hidden) ?? []).slice(0, 60);
-  const hits = foods.filter((f) => { const t = norm(f.name + ' ' + (f.nameEn ?? '')); return words.every((w) => forms(w).some((x) => t.includes(x))); });
+  const hits = foods.filter((f) => { const t = normName(f.name + ' ' + (f.nameEn ?? '')); return words.every((w) => forms(w).some((x) => t.includes(x))); });
   // A typed word found only inside another ("רום וקולה" for "קולה", "יטבתה" for "תה") comes after every whole-word match,
   // even a recent or own food: the owner's "תה נענע" got milk ("…תנובה/שטראוס/יטבתה"), which is logged often.
-  const inside = (f: Food) => (words.every((w) => forms(w).some((x) => norm(f.name).split(/[ \/]/).some((t) => t.startsWith(x)))) ? 0 : 1);
-  return hits.filter((f) => !f.hidden).sort((a, b) => inside(a) - inside(b) || rank(a) - rank(b)).slice(0, 60);
+  const inside = (f: Food) => (words.every((w) => forms(w).some((x) => normName(f.name).split(/[ \/]/).some((t) => t.startsWith(x)))) ? 0 : 1);
+  // Each food is scored once, not on every comparison: sorting ~4,000 hits re-scored them ~50,000 times,
+  // seconds per keystroke on a phone (the owner: typing showed nothing for a long time).
+  return hits.filter((f) => !f.hidden).map((f) => ({ f, i: inside(f), s: rank(f) }))
+    .sort((a, b) => a.i - b.i || a.s - b.s).slice(0, 60).map((x) => x.f);
 }
 
 // A guessed fat is a double when a picked food already has it: the owner's "רוטב בולונז עם שמן זית" was offered olive oil.

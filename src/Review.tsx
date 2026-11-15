@@ -1,7 +1,7 @@
 import { Fragment, useId, useState } from 'react';
 import type { Ctx } from './App';
-import { GRAMS, dishItem, hasFat, itemFor, matchFoods, parseLine, searchFoods, splitAnd, sum, unitFor, unitsOf, type Food, type Item, type Parsed, type Unit } from './lib';
-import { AiTag, Modal, Why } from './ui';
+import { GRAMS, dishItem, hasFat, itemFor, matchFoods, parseLine, splitAnd, sum, unitFor, unitsOf, type Food, type Item, type Parsed, type Unit } from './lib';
+import { AiTag, Modal, Why, useFoodSearch } from './ui';
 import { FoodForm } from './Foods';
 import { NewUnit, NutLine, UnitOptions, unitSaver } from './AddDialog';
 import { Icon } from './icons';
@@ -136,5 +136,5 @@ export function ReviewList({ ctx, parsed, cta, onAdd }: { ctx: Ctx; parsed: Pars
 
 // Up to five foods matching a typed name, each a button that picks it.
 function FoodHits({ ctx, q, onPick }: { ctx: Ctx; q: string; onPick: (f: Food) => void }) {
-  return <>{q.trim() && searchFoods(ctx.foods, q, ctx.recent).slice(0, 5).map((f) => <button key={f.id} type="button" className="row" onClick={() => onPick(f)}>{f.name}</button>)}</>;
+  return <>{useFoodSearch(ctx.foods, q, ctx.recent).slice(0, 5).map((f) => <button key={f.id} type="button" className="row" onClick={() => onPick(f)}>{f.name}</button>)}</>;
 }
