@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { goalsLeft, goalsOf, type Goals } from './goals';
 import type { Ctx } from './App';
-import { MEALS, WATER, pickItem, addDays, addEntries, amountLabel, client, deletePhoto, movePhoto, fmtDate, isDish, isWater, listPhotos, loadEntries, mealNow, sum, today, type Entry, type MealKey, type MealPhoto } from './lib';
+import { MEALS, WATER, pickItem, addDays, addEntries, amountLabel, client, deletePhoto, movePhoto, fmtDate, isDish, isWater, listPhotos, photoShows, loadEntries, mealNow, sum, today, type Entry, type MealKey, type MealPhoto } from './lib';
 import { AiTag, DayGoals, GoalsInfo, Group, MicroGoals, Modal, Ring, WaterLine, confirmIt, promptIt } from './ui';
 import { AddDialog, EntryDialog, Pick, QuickAdd } from './AddDialog';
 import { Icon } from './icons';
@@ -21,8 +21,9 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
   const [quick, setQuick] = useState(0); // the quick-add row reloads when the ＋ window closes: it may have added the usual things
   const [msg, setMsg] = useState('');
   // The deleted entry, with its meal's photos when it was the meal's last food (they go with it unless undone).
-  const [undo, setUndo] = useState<{ e: Entry; photos: MealPhoto[] } | null>(null);
-  const undone = useRef(new Set<string>());
+  type Undo = { e: Entry; photos: MealPhoto[] };
+  const [undo, setUndo] = useState<Undo | null>(null);
+  const undone = useRef(new Set<Undo>()); // by the delete, not the id: an undone entry comes back with the same id
   const [toggled, setToggled] = useState<Record<string, boolean>>({}); // `${date}:${meal}` → open
 
   // A meal's photos show in its foods' details, not in the list: they'd crowd it and don't sit next to any one food.
@@ -56,24 +57,26 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
     setEntries((cur) => [...(cur ?? []), ...es]);
     if (es[0]) setOpen(es[0].meal, true);
   };
-  // A meal's photos belong to its food: they go (or move) with the meal's last food.
-  const photosLeft = (e: Entry) => (!isWater(e) && !food.some((x) => x.meal === e.meal && x.id !== e.id) ? photos.filter((p) => p.meal === e.meal) : []);
+  // A meal photo belongs to the foods logged with it: it goes (or moves) with the last of them.
+  const photosLeft = (e: Entry) => (isWater(e) ? [] : photos.filter((p) => photoShows(p, e) && !food.some((x) => x.id !== e.id && photoShows(p, x))));
   const remove = async (e: Entry) => {
     await client.models.Entry.delete({ id: e.id });
     setEntries((cur) => cur!.filter((x) => x.id !== e.id));
     const ps = photosLeft(e);
     setPhotos((cur) => cur.filter((p) => !ps.includes(p)));
-    setUndo({ e, photos: ps });
+    const u = { e, photos: ps };
+    setUndo(u);
     setTimeout(() => {
-      setUndo((u) => (u?.e.id === e.id ? null : u));
-      if (!undone.current.delete(e.id)) ps.forEach((p) => void deletePhoto(p));
+      setUndo((cur) => (cur === u ? null : cur));
+      if (!undone.current.delete(u)) ps.forEach((p) => void deletePhoto(p));
     }, 6000);
   };
-  const restore = async ({ e, photos: ps }: { e: Entry; photos: MealPhoto[] }) => {
-    undone.current.add(e.id);
+  const restore = async (u: Undo) => {
+    const { e, photos: ps } = u;
+    undone.current.add(u);
     setUndo(null);
     setPhotos((cur) => [...cur, ...ps]);
-    added(await addEntries(e.date, e.meal as MealKey, [pickItem(e)]));
+    added(await addEntries(e.date, e.meal as MealKey, [{ ...pickItem(e), id: e.id }]));
   };
   const saved = async (old: Entry, e: Entry) => {
     setEntries((cur) => cur!.map((x) => (x.id === e.id ? e : x)));
@@ -204,7 +207,7 @@ export default function Day({ ctx, date, setDate, onExport, onTailor }: { ctx: C
         </Modal>
       )}
       {editing && (
-        <EntryDialog ctx={ctx} entry={editing} photos={photos.filter((p) => p.meal === editing.meal)} onPhoto={setViewing} onClose={() => setEditing(null)} onDelete={() => { remove(editing); setEditing(null); }}
+        <EntryDialog ctx={ctx} entry={editing} photos={photos.filter((p) => photoShows(p, editing))} onPhoto={setViewing} onClose={() => setEditing(null)} onDelete={() => { remove(editing); setEditing(null); }}
           onSaved={(e) => saved(editing, e)} />
       )}
     </div>

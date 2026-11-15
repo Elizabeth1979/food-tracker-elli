@@ -637,6 +637,37 @@ test('deleting a meal\'s last food takes its photos too (two of them), and undo 
   await button('יומן').tap();
 });
 
+test('a food added after the meal photo doesn\'t show it; the photo goes with the last food logged with it', async () => {
+  // the owner's bug: a mandarin added to lunch later showed the lunch photo
+  await button('יום קודם').tap();
+  await openAdd();
+  await dialog().getByLabel('מהגלריה').setInputFiles({ name: 'meal.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(await sampleJpeg(), 'base64') });
+  await button('זהה מזונות', dialog()).tap();
+  await button(/^הוסף \(/, dialog()).tap();
+  await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('מנדרינה');
+  await button(/^קלמנטינה\/מנדרינה, טריה/, dialog()).tap();
+  await button('הוסף', dialog()).tap();
+  await button(/^סיום/, dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  const foods = entries('ארוחת צהריים');
+  const n = await foods.count();
+  assert.equal(await photoCount('ארוחת צהריים'), 1); // a food from the photo shows it
+  await openEntry('ארוחת צהריים', n - 1); // the mandarin, logged last
+  assert.match(await dialog().getByRole('heading').first().innerText(), /מנדרינה/);
+  assert.equal(await dialog().getByRole('button', { name: /^תמונה \d+:/ }).count(), 0);
+  await button('סגור', dialog()).tap();
+  await dialog().waitFor({ state: 'detached' });
+  // deleting the photo's foods: the last of them takes it, though the mandarin is still there
+  for (let left = n; left > 2; left--) { await foods.first().tap(); await foods.nth(left - 1).waitFor({ state: 'detached' }); }
+  await foods.first().tap();
+  await page.getByRole('status').filter({ hasText: 'נמחק עם תמונת הארוחה' }).waitFor();
+  await page.getByRole('status').filter({ hasText: 'נמחק' }).waitFor({ state: 'detached', timeout: 10_000 });
+  await foods.first().tap();
+  assert.doesNotMatch(await page.getByRole('status').filter({ hasText: 'נמחק' }).innerText(), /תמונ/);
+  await page.getByRole('status').filter({ hasText: 'נמחק' }).waitFor({ state: 'detached', timeout: 10_000 });
+  await button('יום הבא').tap();
+});
+
 test('moving a meal\'s last food to another meal takes its photo along', async () => {
   await button('יום קודם').tap();
   await openAdd();
