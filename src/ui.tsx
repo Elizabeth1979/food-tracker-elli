@@ -1,7 +1,14 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { LABEL_ONLY, MACROS, MICROS, WATER_GOAL_ML, extraParts, isFFQ, microAmounts, microSources, type Item, type MicroAmount, type Nut, type Unit } from './lib';
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { LABEL_ONLY, MACROS, MICROS, WATER_GOAL_ML, extraParts, isFFQ, microAmounts, microSources, searchFoods, type Food, type Item, type MicroAmount, type Nut, type Unit } from './lib';
 import { Icon } from './icons';
 import { DAILY_VALUES, DEFAULT_GOALS, DV_WHY, MICRO_INFO, PROTEIN_PER_KG, SALT_PER_SODIUM, SODIUM_MAX, microLevel, type Goals } from './goals';
+
+// Foods matching what's typed, none while the box is empty. The search trails the typing (useDeferredValue),
+// so each letter shows at once even when a short query matches thousands of foods on a slow phone.
+export function useFoodSearch(foods: Food[], q: string, recent: string[]) {
+  const typed = useDeferredValue(q.trim());
+  return useMemo(() => (typed ? searchFoods(foods, typed, recent) : []), [foods, typed, recent]);
+}
 
 // A native modal <dialog>: the browser traps focus, closes it on Esc, and on Android closes it with the back
 // button or gesture (close requests, Chrome 120+), so back no longer leaves the app. `onBack` gets that back

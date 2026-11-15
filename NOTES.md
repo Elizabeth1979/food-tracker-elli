@@ -9,6 +9,14 @@ What was done in each work session and what's next. Newest first.
 - Photos saved before this have no food list and still show on their whole meal (today's lunch photo included).
 - Screen test: a mandarin added after the photo shows none; deleting the photo's foods takes the photo while the mandarin stays.
 
+## 2026-11-15: typing in the search shows at once
+
+**Done:**
+- The owner: typed letters didn't show for a long time, as if something ran behind the scenes. It did: one letter matches ~3,000 foods, and the sort re-scored each food on every comparison (~50,000 times), each time checking ~80 words in its name. 2.4 s a letter on a desktop; on a 6×-slowed CPU (a phone) the first letter took ~10 s to appear. The box only shows the letter once the search is done.
+- Now each food is scored once, and what a name says whatever is typed (processed, rare, whole grain, fresh) is worked out once per food and kept (`traitsOf`), filled ahead when the foods load (`warmSearch`, in idle time). One letter: ~10 ms. Results unchanged (all ranking tests pass).
+- The four search boxes share `useFoodSearch` (`ui.tsx`): the search trails the typing (`useDeferredValue`), so a letter shows even if the results take a moment.
+- Tests: `search.test.ts` (one letter under 100 ms; the old code took ~2 s), screen test (each letter shows within 0.5 s on a 6×-slowed CPU; the old code took ~10 s).
+
 ## 2026-10-28: save a meal from the foods you pick
 
 **Done:**
