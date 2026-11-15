@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { Ctx } from './App';
-import { amountLabel, client, mealItems, searchFoods, sum, type Food, type Item, type SavedMeal } from './lib';
-import { FoodHit, Modal } from './ui';
+import { amountLabel, client, mealItems, sum, type Food, type Item, type SavedMeal } from './lib';
+import { FoodHit, Modal, useFoodSearch } from './ui';
 import { Amount, NutLine, itemFood, itemInit, unitSaver } from './AddDialog';
 import { Icon } from './icons';
 
@@ -13,7 +13,7 @@ export function MealEditor({ ctx, meal, onClose }: { ctx: Ctx; meal?: SavedMeal;
   const [sel, setSel] = useState<Food | null>(null);
   const [edit, setEdit] = useState<number | null>(null); // index of the item being re-portioned
   const [err, setErr] = useState('');
-  const hits = useMemo(() => searchFoods(ctx.foods, q, ctx.recent), [ctx.foods, q, ctx.recent]);
+  const hits = useFoodSearch(ctx.foods, q, ctx.recent);
 
   const real = edit === null ? undefined : ctx.foods.find((x) => x.id === items[edit].foodId);
 

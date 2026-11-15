@@ -3,7 +3,7 @@ import type { Ctx } from './App';
 import { GRAMS, MEALS, isDish, loadMoh, isWater, mealNow, placeOf, head, addDays, addEntries, addUnit, json, MAX_PHOTOS, amountLabel, client, fmtDate, itemFor, loadEntries, mealItems, parseLine, matchMeal, pickItem, readLabel, readMeal, savePhoto, scale, searchFoods, sum, today, unitsOf, type Entry, type Food, type Item, type MealKey, type MealPhoto, type Nut, type Parsed, type Question, type SavedMeal, type Seen, type Unit } from './lib';
 import { norm, repeatOf, unitGuesser } from './search';
 import { goalsLeft, whatFits, type Goals } from './goals';
-import { AiTag, FileButton, FoodHit, MINE_HINT, Modal, PhotoPick, confirmIt, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
+import { AiTag, FileButton, FoodHit, MINE_HINT, useFoodSearch, Modal, PhotoPick, confirmIt, Reading, UNIT_HINT, UnitInputs, Why, unitOf, usePhotoUrl, type UnitDraft } from './ui';
 import { FoodForm, labelFood, saveFood } from './Foods';
 import { ReviewList } from './Review';
 import { Icon } from './icons';
@@ -164,7 +164,7 @@ export function AddDialog({ ctx, meal: meal0, date, fromFoods, left, onClose, on
   const [done, setDone] = useState<Record<string, Entry[]>>({});
   const added = Object.values(done).flat();
   const { month, last, usual } = useUsual(ctx, date, added);
-  const hits = useMemo(() => searchFoods(ctx.foods, q, ctx.recent), [ctx.foods, q, ctx.recent]);
+  const hits = useFoodSearch(ctx.foods, q, ctx.recent);
   const meals = q ? ctx.meals.filter((m) => norm(m.name).includes(norm(q))) : ctx.meals;
   const [more, setMore] = useState(false);
   // What fits in what's left, at the usual amount (a food never logged has none, so it's out); this visit's additions

@@ -275,3 +275,15 @@ test('a new size guesses its weight from a similar database food', () => {
   assert.equal(unitGuesser(moh, own('mine-2', 'קקטוס מוזר'))('כפית')!.g, 5); // nothing similar: a typical teaspoon
   assert.equal(labneh('ענק'), null);
 });
+
+// The owner: typing in the search showed nothing for a long time. One letter matches thousands of foods, and the
+// sort re-scored each on every comparison and checked ~80 words in every name: 2.4 s a letter on a desktop, several
+// times that on a phone. Now ~10 ms.
+test('one typed letter searches the whole database fast', () => {
+  const recent = moh.slice(0, 30).map((f) => f.id);
+  searchFoods(moh, 'א', recent); // warm up
+  const t = performance.now();
+  for (const q of ['ע', 'ל', 'ב', 'ש']) searchFoods(moh, q, recent);
+  const each = (performance.now() - t) / 4;
+  assert.ok(each < 100, `${Math.round(each)} ms a letter`);
+});

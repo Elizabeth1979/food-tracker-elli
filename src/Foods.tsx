@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { Ctx } from './App';
-import { MEALS, VITAMINS, head, placeOf, addEntries, client, fmtDate, json, kcalOff, labelPhotoUrl, mealItems, mealNow, readLabel, sameFood, saveLabelPhoto, searchFoods, sum, today, type Entry, type Extra, type Food, type Item, type Label, type SavedMeal, type Unit } from './lib';
-import { Group, FoodSummary, MINE_HINT, MicroLine, Modal, PhotoPick, confirmIt, UNIT_HINT, UnitInputs, draftOf, unitOf, type UnitDraft } from './ui';
+import { MEALS, VITAMINS, head, placeOf, addEntries, client, fmtDate, json, kcalOff, labelPhotoUrl, mealItems, mealNow, readLabel, sameFood, saveLabelPhoto, sum, today, type Entry, type Extra, type Food, type Item, type Label, type SavedMeal, type Unit } from './lib';
+import { Group, FoodSummary, MINE_HINT, MicroLine, Modal, useFoodSearch, PhotoPick, confirmIt, UNIT_HINT, UnitInputs, draftOf, unitOf, type UnitDraft } from './ui';
 import { MealEditor } from './MealEditor';
 import { AddDialog } from './AddDialog';
 import { Icon } from './icons';
@@ -122,7 +122,7 @@ export default function Foods({ ctx, date }: { ctx: Ctx; date: string }) {
   const logged = (es: Entry[]) => setMsg(`״${es[0]?.name}״ נוסף ל${placeOf(es, true)}`);
   const [edit, setEdit] = useState<Partial<Food> | null>(null);
   const [mealEdit, setMealEdit] = useState<SavedMeal | 'new' | null>(null);
-  const hits = useMemo(() => (q ? searchFoods(ctx.foods, q, ctx.recent) : []), [ctx.foods, q, ctx.recent]);
+  const hits = useFoodSearch(ctx.foods, q, ctx.recent);
   const saved = (f: Food) => { ctx.setFoods(edit?.id ? ctx.foods.map((x) => (x.id === f.id ? f : x)) : [...ctx.foods, f]); setEdit(null); };
   const hide = async (f: Food) => {
     if (!(await confirmIt(`להסתיר את "${f.name}"?`, 'הסתרה'))) return;

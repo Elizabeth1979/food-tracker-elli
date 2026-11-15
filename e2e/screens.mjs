@@ -91,6 +91,26 @@ test('one ＋ opens the add window, with no meal to choose', async () => {
   assert.equal(await dialog().getByRole('group', { name: 'ארוחה' }).count(), 0);
 });
 
+// The owner: typed letters didn't show for a long time while the search ran. On a phone-speed CPU, each shows at once.
+test('typing in the search shows each letter at once, even on a slow phone', async () => {
+  const box = dialog().getByRole('searchbox', { name: 'חיפוש' });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+  await box.focus();
+  const waits = [];
+  for (const ch of 'שני') {
+    const t = Date.now();
+    await page.keyboard.insertText(ch);
+    await page.waitForFunction(([el, n]) => el.value.length === n, [await box.elementHandle(), waits.length + 1]);
+    waits.push(Date.now() - t);
+  }
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await cdp.detach();
+  console.log('letter waits (ms):', waits.join(', '));
+  assert.ok(Math.max(...waits) < 500, `letters took ${waits.join(', ')} ms`);
+  await box.fill('');
+});
+
 test('search, pick an amount, add; a fruit counts toward vitamin C', async () => {
   await dialog().getByRole('searchbox', { name: 'חיפוש' }).fill('ענבים');
   // the owner's ask: a result's calories on the name's line, like the usual foods, not under it
@@ -728,7 +748,7 @@ test('the foods page, from Settings: search first, then my foods and saved meals
   await grapes.first().waitFor();
   assert.equal(await page.getByRole('region', { name: /^המזונות שלי/ }).count(), 0); // while searching, only results
   await search.fill('מסטיק בדיקה');
-  assert.ok(await page.getByText('שלי', { exact: true }).first().isVisible());
+  await page.getByText('שלי', { exact: true }).first().waitFor(); // results trail the typing
   // rows show just the name; tapping it opens the values and the edit buttons
   const edit = button('עריכה: מסטיק בדיקה');
   assert.ok(!(await edit.isVisible()));
